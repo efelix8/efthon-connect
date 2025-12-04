@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-const FUNCTION_BASE = "https://uobglgbzfzlnmdapirtz.functions.supabase.co/functions/v1";
+export const FUNCTION_BASE = "https://uobglgbzfzlnmdapirtz.functions.supabase.co/functions/v1";
 
 export interface Room {
   id: string;
