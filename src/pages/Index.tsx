@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
-import { fetchRooms, fetchMessages, sendMessage, setNickname, type Room, type ChatMessage } from "@/lib/chat-api";
+import { fetchRooms, fetchMessages, sendMessage, type Room, type ChatMessage } from "@/lib/chat-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -17,8 +17,6 @@ const Index = () => {
 
   const [activeRoomSlug, setActiveRoomSlug] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const [nickname, setNicknameInput] = useState("");
-  const [hasNickname, setHasNickname] = useState(false);
 
   useEffect(() => {
     document.title = "Sohbet | Uygulama";
@@ -68,24 +66,7 @@ const Index = () => {
     );
   }, [messagesResponse]);
 
-  const nicknameMutation = useMutation({
-    mutationFn: (value: string) => setNickname(value),
-    onSuccess: (data) => {
-      setHasNickname(true);
-      setNicknameInput(data.user.nickname);
-      toast({
-        title: "Takma ad kaydedildi",
-        description: `Artık \"${data.user.nickname}\" olarak görüneceksin.`,
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        variant: "destructive",
-        title: "Takma ad hatası",
-        description: error?.message ?? "Takma ad kaydedilemedi.",
-      });
-    },
-  });
+  
 
   const sendMessageMutation = useMutation({
     mutationFn: () => {
@@ -110,14 +91,6 @@ const Index = () => {
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return;
-    if (!hasNickname) {
-      toast({
-        variant: "destructive",
-        title: "Takma ad gerekli",
-        description: "Mesaj yazmadan önce takma adını belirlemelisin.",
-      });
-      return;
-    }
     sendMessageMutation.mutate();
   };
 
@@ -172,44 +145,12 @@ const Index = () => {
             <p className="text-xs text-muted-foreground">Gerçek zamanlı sınıf sohbeti</p>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="max-w-[160px] truncate">{user.email}</span>
-            <Separator orientation="vertical" className="h-4" />
-            <Button size="sm" variant="outline" onClick={() => navigate("/auth")}
-              className="hidden md:inline-flex text-xs">
-              Hesap
-            </Button>
+            <span className="max-w-[200px] truncate">
+              Takma adınla anonim olarak bağlısın.
+            </span>
           </div>
         </header>
 
-        <section className="border-b border-border bg-muted/40 px-4 py-3">
-          <form
-            className="flex flex-col gap-2 sm:flex-row sm:items-center"
-            onSubmit={(e) => {
-              e.preventDefault();
-              if (!nickname.trim()) return;
-              nicknameMutation.mutate(nickname.trim());
-            }}
-          >
-            <div className="flex-1">
-              <label className="flex flex-col gap-1 text-xs font-medium">
-                Takma adın
-                <Input
-                  value={nickname}
-                  onChange={(e) => setNicknameInput(e.target.value)}
-                  placeholder="Örneğin: MatematikKurdu"
-                  className="h-9"
-                />
-              </label>
-            </div>
-            <Button
-              type="submit"
-              size="sm"
-              disabled={nicknameMutation.isPending || !nickname.trim()}
-            >
-              {nicknameMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-            </Button>
-          </form>
-        </section>
 
         <section className="flex flex-1 flex-col">
           <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
@@ -240,11 +181,7 @@ const Index = () => {
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder={
-                  hasNickname
-                    ? "Mesajını yaz..."
-                    : "Önce yukarıdan takma adını kaydetmelisin."
-                }
+                placeholder="Mesajını yaz..."
                 disabled={sendMessageMutation.isPending}
               />
               <Button type="submit" disabled={sendMessageMutation.isPending || !message.trim()}>
