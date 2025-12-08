@@ -57,6 +57,13 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "messages_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_public"
+            referencedColumns: ["id"]
+          },
         ]
       }
       profiles: {
@@ -150,7 +157,38 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      users_public: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          last_seen_at: string | null
+          nickname: string | null
+          profile_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          last_seen_at?: string | null
+          nickname?: string | null
+          profile_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          last_seen_at?: string | null
+          nickname?: string | null
+          profile_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       [_ in never]: never
