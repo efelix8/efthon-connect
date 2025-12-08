@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Users } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
+import { usePresence } from "@/hooks/use-presence";
 import { fetchRooms, fetchMessages, sendMessage, type Room, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +27,8 @@ const Index = () => {
   const [activeRoomSlug, setActiveRoomSlug] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  
+  const { activeUsers } = usePresence(user?.id);
 
   useEffect(() => {
     document.title = "Sohbet | Uygulama";
@@ -217,10 +221,11 @@ const Index = () => {
             </h1>
             <p className="text-xs text-muted-foreground">Gerçek zamanlı sınıf sohbeti</p>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="max-w-[200px] truncate">
-              Takma adınla anonim olarak bağlısın.
-            </span>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1">
+              <Users className="h-3.5 w-3.5 text-primary" />
+              <span className="font-medium text-primary">{activeUsers} çevrimiçi</span>
+            </div>
           </div>
         </header>
 
