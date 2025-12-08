@@ -131,7 +131,7 @@ async function handlePost(req: Request): Promise<Response> {
     | null;
 
   const roomSlug = body?.room?.trim();
-  const imageUrl = body?.imageUrl?.trim() || null;
+  const rawImageUrl = body?.imageUrl?.trim() || null;
   const rawContent = body?.content ?? "";
   const content = rawContent.trim();
 
@@ -140,12 +140,27 @@ async function handlePost(req: Request): Promise<Response> {
   }
 
   // At least content or image is required
-  if (!content && !imageUrl) {
+  if (!content && !rawImageUrl) {
     return jsonResponse({ error: "Content or image is required" }, { status: 400 });
   }
 
   if (content && content.length > 500) {
     return jsonResponse({ error: "Content must be at most 500 characters" }, { status: 400 });
+  }
+
+  // Validate image URL - must be from our storage bucket
+  let imageUrl: string | null = null;
+  if (rawImageUrl) {
+    const allowedPatterns = [
+      `${supabaseUrl}/storage/v1/object/public/chat-images/`,
+      `${supabaseUrl}/storage/v1/object/sign/chat-images/`,
+    ];
+    const isValidUrl = allowedPatterns.some(pattern => rawImageUrl.startsWith(pattern));
+    
+    if (!isValidUrl) {
+      return jsonResponse({ error: "Invalid image URL. Only images from the chat storage are allowed." }, { status: 400 });
+    }
+    imageUrl = rawImageUrl;
   }
 
   const {
