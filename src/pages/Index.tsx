@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { fetchRooms, fetchMessages, sendMessage, type Room, type ChatMessage } from "@/lib/chat-api";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
@@ -65,6 +66,39 @@ const Index = () => {
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
   }, [messagesResponse]);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Realtime subscription for new messages
+  useEffect(() => {
+    if (!messagesResponse?.room?.id) return;
+
+    const channel = supabase
+      .channel(`room-${messagesResponse.room.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${messagesResponse.room.id}`,
+        },
+        () => {
+          // Refetch messages when any change happens
+          queryClient.invalidateQueries({ queryKey: ["messages", activeRoomSlug] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [messagesResponse?.room?.id, activeRoomSlug, queryClient]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   
 
@@ -174,6 +208,7 @@ const Index = () => {
                 <p className="text-sm leading-snug text-foreground">{m.content}</p>
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
 
           <form onSubmit={handleSend} className="border-t border-border bg-card/60 px-4 py-3">
