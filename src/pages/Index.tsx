@@ -10,6 +10,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import MessageItem from "@/components/MessageItem";
+import CreateRoomDialog from "@/components/CreateRoomDialog";
+import ImageUpload from "@/components/ImageUpload";
+
+const MAX_ROOMS = 10;
 
 const Index = () => {
   const { user, session, loading, signOut } = useAuth();
@@ -19,6 +23,7 @@ const Index = () => {
 
   const [activeRoomSlug, setActiveRoomSlug] = useState<string | null>(null);
   const [message, setMessage] = useState("");
+  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   useEffect(() => {
     document.title = "Sohbet | Uygulama";
@@ -122,10 +127,11 @@ const Index = () => {
   const sendMessageMutation = useMutation({
     mutationFn: () => {
       if (!activeRoomSlug) throw new Error("Oda seçili değil");
-      return sendMessage(activeRoomSlug, message);
+      return sendMessage(activeRoomSlug, message, uploadedImageUrl || undefined);
     },
     onSuccess: () => {
       setMessage("");
+      setUploadedImageUrl(null);
       if (activeRoomSlug) {
         queryClient.invalidateQueries({ queryKey: ["messages", activeRoomSlug] });
       }
@@ -141,7 +147,7 @@ const Index = () => {
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim()) return;
+    if (!message.trim() && !uploadedImageUrl) return;
     sendMessageMutation.mutate();
   };
 
@@ -176,6 +182,9 @@ const Index = () => {
               <span className="truncate">{room.name}</span>
             </button>
           ))}
+        </div>
+        <div className="mt-2">
+          <CreateRoomDialog roomCount={rooms?.length ?? 0} maxRooms={MAX_ROOMS} />
         </div>
         <Separator className="my-4" />
         <button
@@ -223,14 +232,27 @@ const Index = () => {
           </div>
 
           <form onSubmit={handleSend} className="border-t border-border bg-card/60 px-4 py-3">
-            <div className="flex gap-2">
+            <div className="flex gap-2 items-center">
+              {user?.id && (
+                <ImageUpload
+                  userId={user.id}
+                  onImageUploaded={(url) => setUploadedImageUrl(url)}
+                  onImageRemoved={() => setUploadedImageUrl(null)}
+                  imagePreview={uploadedImageUrl}
+                  disabled={sendMessageMutation.isPending}
+                />
+              )}
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 placeholder="Mesajını yaz..."
                 disabled={sendMessageMutation.isPending}
+                className="flex-1"
               />
-              <Button type="submit" disabled={sendMessageMutation.isPending || !message.trim()}>
+              <Button 
+                type="submit" 
+                disabled={sendMessageMutation.isPending || (!message.trim() && !uploadedImageUrl)}
+              >
                 Gönder
               </Button>
             </div>
@@ -242,4 +264,3 @@ const Index = () => {
 };
 
 export default Index;
-

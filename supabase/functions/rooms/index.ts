@@ -13,6 +13,8 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error("Missing SUPABASE_URL or SUPABASE_ANON_KEY environment variables");
 }
 
+const MAX_ROOMS = 10;
+
 function createSupabaseClient(req: Request): SupabaseClient {
   const authHeader = req.headers.get("Authorization") ?? "";
 
@@ -39,39 +41,144 @@ function jsonResponse(body: unknown, init: ResponseInit = {}): Response {
   return new Response(JSON.stringify(body), { ...init, headers });
 }
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+async function handleGet(req: Request): Promise<Response> {
+  const supabase = createSupabaseClient(req);
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return jsonResponse({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("id, slug, name, is_default, created_at, created_by")
+    .order("is_default", { ascending: false })
+    .order("name", { ascending: true });
+
+  if (error) {
+    console.error("Error selecting rooms", error);
+    return jsonResponse({ error: "Failed to fetch rooms" }, { status: 500 });
+  }
+
+  return jsonResponse({ rooms: data ?? [] });
+}
+
+async function handlePost(req: Request): Promise<Response> {
+  const supabase = createSupabaseClient(req);
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return jsonResponse({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => null) as { name?: string } | null;
+  const rawName = body?.name ?? "";
+  const name = rawName.trim();
+
+  if (!name) {
+    return jsonResponse({ error: "Room name is required" }, { status: 400 });
+  }
+
+  if (name.length < 2 || name.length > 50) {
+    return jsonResponse({ error: "Room name must be between 2 and 50 characters" }, { status: 400 });
+  }
+
+  // Check room count limit
+  const { count, error: countError } = await supabase
+    .from("rooms")
+    .select("*", { count: "exact", head: true });
+
+  if (countError) {
+    console.error("Error counting rooms", countError);
+    return jsonResponse({ error: "Failed to check room limit" }, { status: 500 });
+  }
+
+  if ((count ?? 0) >= MAX_ROOMS) {
+    return jsonResponse({ error: `Maximum ${MAX_ROOMS} rooms allowed` }, { status: 400 });
+  }
+
+  // Get chat user
+  const {
+    data: chatUser,
+    error: chatUserError,
+  } = await supabase
+    .from("users")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (chatUserError || !chatUser) {
+    console.error("Error fetching chat user", chatUserError);
+    return jsonResponse({ error: "User not found. Set your nickname first." }, { status: 400 });
+  }
+
+  // Generate unique slug
+  let slug = slugify(name);
+  const { data: existing } = await supabase
+    .from("rooms")
+    .select("slug")
+    .eq("slug", slug)
+    .maybeSingle();
+
+  if (existing) {
+    slug = `${slug}-${Date.now().toString(36)}`;
+  }
+
+  const {
+    data: inserted,
+    error: insertError,
+  } = await supabase
+    .from("rooms")
+    .insert({
+      name,
+      slug,
+      is_default: false,
+      created_by: chatUser.id,
+    })
+    .select("id, slug, name, is_default, created_at, created_by")
+    .single();
+
+  if (insertError) {
+    console.error("Error inserting room", insertError);
+    return jsonResponse({ error: "Failed to create room" }, { status: 500 });
+  }
+
+  console.log("Room created:", inserted);
+  return jsonResponse({ room: inserted }, { status: 201 });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (req.method !== "GET") {
-    return jsonResponse({ error: "Method not allowed" }, { status: 405 });
-  }
-
   try {
-    const supabase = createSupabaseClient(req);
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return jsonResponse({ error: "Unauthorized" }, { status: 401 });
+    if (req.method === "GET") {
+      return await handleGet(req);
     }
 
-    const { data, error } = await supabase
-      .from("rooms")
-      .select("id, slug, name, is_default, created_at")
-      .order("is_default", { ascending: false })
-      .order("name", { ascending: true });
-
-    if (error) {
-      console.error("Error selecting rooms", error);
-      return jsonResponse({ error: "Failed to fetch rooms" }, { status: 500 });
+    if (req.method === "POST") {
+      return await handlePost(req);
     }
 
-    return jsonResponse({ rooms: data ?? [] });
+    return jsonResponse({ error: "Method not allowed" }, { status: 405 });
   } catch (error) {
     console.error("Error in rooms function", error);
     return jsonResponse({ error: "Internal server error" }, { status: 500 });

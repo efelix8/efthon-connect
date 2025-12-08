@@ -21,6 +21,7 @@ export type Database = {
           deleted_at: string | null
           edited_at: string | null
           id: string
+          image_url: string | null
           room_id: string
           user_id: string
         }
@@ -30,6 +31,7 @@ export type Database = {
           deleted_at?: string | null
           edited_at?: string | null
           id?: string
+          image_url?: string | null
           room_id: string
           user_id: string
         }
@@ -39,6 +41,7 @@ export type Database = {
           deleted_at?: string | null
           edited_at?: string | null
           id?: string
+          image_url?: string | null
           room_id?: string
           user_id?: string
         }
@@ -96,6 +99,7 @@ export type Database = {
       rooms: {
         Row: {
           created_at: string
+          created_by: string | null
           id: string
           is_default: boolean
           name: string
@@ -103,6 +107,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by?: string | null
           id?: string
           is_default?: boolean
           name: string
@@ -110,12 +115,28 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string | null
           id?: string
           is_default?: boolean
           name?: string
           slug?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "rooms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rooms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users_public"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       users: {
         Row: {

@@ -83,7 +83,7 @@ async function handleGet(req: Request): Promise<Response> {
   let query = supabase
     .from("messages")
     .select(
-      `id, content, created_at, edited_at, room_id,
+      `id, content, image_url, created_at, edited_at, room_id,
        user:users ( id, nickname )`
     )
     .eq("room_id", room.id)
@@ -101,9 +101,10 @@ async function handleGet(req: Request): Promise<Response> {
     return jsonResponse({ error: "Failed to fetch messages" }, { status: 500 });
   }
 
-  const messages = (data ?? []).map((m) => ({
+  const messages = (data ?? []).map((m: any) => ({
     id: m.id,
     content: m.content,
+    imageUrl: m.image_url,
     createdAt: m.created_at,
     editedAt: m.edited_at,
     roomId: m.room_id,
@@ -126,10 +127,11 @@ async function handlePost(req: Request): Promise<Response> {
   }
 
   const body = await req.json().catch(() => null) as
-    | { room?: string; content?: string }
+    | { room?: string; content?: string; imageUrl?: string }
     | null;
 
   const roomSlug = body?.room?.trim();
+  const imageUrl = body?.imageUrl?.trim() || null;
   const rawContent = body?.content ?? "";
   const content = rawContent.trim();
 
@@ -137,11 +139,12 @@ async function handlePost(req: Request): Promise<Response> {
     return jsonResponse({ error: "Room is required" }, { status: 400 });
   }
 
-  if (!content) {
-    return jsonResponse({ error: "Content is required" }, { status: 400 });
+  // At least content or image is required
+  if (!content && !imageUrl) {
+    return jsonResponse({ error: "Content or image is required" }, { status: 400 });
   }
 
-  if (content.length > 500) {
+  if (content && content.length > 500) {
     return jsonResponse({ error: "Content must be at most 500 characters" }, { status: 400 });
   }
 
@@ -189,9 +192,10 @@ async function handlePost(req: Request): Promise<Response> {
     .insert({
       room_id: room.id,
       user_id: chatUser.id,
-      content,
+      content: content || "",
+      image_url: imageUrl,
     })
-    .select("id, content, created_at, edited_at, room_id")
+    .select("id, content, image_url, created_at, edited_at, room_id")
     .single();
 
   if (insertError) {
@@ -202,6 +206,7 @@ async function handlePost(req: Request): Promise<Response> {
   const message = {
     id: inserted.id,
     content: inserted.content,
+    imageUrl: inserted.image_url,
     createdAt: inserted.created_at,
     editedAt: inserted.edited_at,
     roomId: inserted.room_id,
