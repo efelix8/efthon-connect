@@ -211,6 +211,143 @@ async function handlePost(req: Request): Promise<Response> {
   return jsonResponse({ room, message });
 }
 
+async function handlePut(req: Request): Promise<Response> {
+  const supabase = createSupabaseClient(req);
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return jsonResponse({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const body = await req.json().catch(() => null) as
+    | { messageId?: string; content?: string }
+    | null;
+
+  const messageId = body?.messageId?.trim();
+  const rawContent = body?.content ?? "";
+  const content = rawContent.trim();
+
+  if (!messageId) {
+    return jsonResponse({ error: "Message ID is required" }, { status: 400 });
+  }
+
+  if (!content) {
+    return jsonResponse({ error: "Content is required" }, { status: 400 });
+  }
+
+  if (content.length > 500) {
+    return jsonResponse({ error: "Content must be at most 500 characters" }, { status: 400 });
+  }
+
+  // Verify user owns this message
+  const {
+    data: chatUser,
+    error: userRowError,
+  } = await supabase
+    .from("users")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (userRowError || !chatUser) {
+    return jsonResponse({ error: "User not found" }, { status: 400 });
+  }
+
+  const {
+    data: updated,
+    error: updateError,
+  } = await supabase
+    .from("messages")
+    .update({
+      content,
+      edited_at: new Date().toISOString(),
+    })
+    .eq("id", messageId)
+    .eq("user_id", chatUser.id)
+    .select("id, content, created_at, edited_at, room_id")
+    .maybeSingle();
+
+  if (updateError) {
+    console.error("Error updating message", updateError);
+    return jsonResponse({ error: "Failed to update message" }, { status: 500 });
+  }
+
+  if (!updated) {
+    return jsonResponse({ error: "Message not found or not authorized" }, { status: 404 });
+  }
+
+  return jsonResponse({
+    message: {
+      id: updated.id,
+      content: updated.content,
+      createdAt: updated.created_at,
+      editedAt: updated.edited_at,
+      roomId: updated.room_id,
+    },
+  });
+}
+
+async function handleDelete(req: Request): Promise<Response> {
+  const supabase = createSupabaseClient(req);
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return jsonResponse({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const url = new URL(req.url);
+  const messageId = url.searchParams.get("id");
+
+  if (!messageId) {
+    return jsonResponse({ error: "Message ID is required" }, { status: 400 });
+  }
+
+  // Verify user owns this message
+  const {
+    data: chatUser,
+    error: userRowError,
+  } = await supabase
+    .from("users")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (userRowError || !chatUser) {
+    return jsonResponse({ error: "User not found" }, { status: 400 });
+  }
+
+  // Soft delete - set deleted_at
+  const {
+    data: deleted,
+    error: deleteError,
+  } = await supabase
+    .from("messages")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", messageId)
+    .eq("user_id", chatUser.id)
+    .select("id")
+    .maybeSingle();
+
+  if (deleteError) {
+    console.error("Error deleting message", deleteError);
+    return jsonResponse({ error: "Failed to delete message" }, { status: 500 });
+  }
+
+  if (!deleted) {
+    return jsonResponse({ error: "Message not found or not authorized" }, { status: 404 });
+  }
+
+  return jsonResponse({ success: true });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -223,6 +360,14 @@ serve(async (req) => {
 
     if (req.method === "POST") {
       return await handlePost(req);
+    }
+
+    if (req.method === "PUT") {
+      return await handlePut(req);
+    }
+
+    if (req.method === "DELETE") {
+      return await handleDelete(req);
     }
 
     return jsonResponse({ error: "Method not allowed" }, { status: 405 });

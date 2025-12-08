@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import MessageItem from "@/components/MessageItem";
 
 const Index = () => {
   const { user, session, loading, signOut } = useAuth();
@@ -59,6 +60,22 @@ const Index = () => {
     queryFn: () => fetchMessages(accessToken, activeRoomSlug!),
     enabled: !!accessToken && !!activeRoomSlug,
   });
+
+  // Get current user's chat user ID
+  const { data: chatUserData } = useQuery({
+    queryKey: ["chatUser", user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_user_id", user!.id)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  const chatUserId = chatUserData?.id ?? null;
 
   const messages = useMemo(() => {
     if (!messagesResponse) return [] as ChatMessage[];
@@ -195,18 +212,12 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">Bu odada henüz mesaj yok.</p>
             )}
             {messages.map((m) => (
-              <div key={m.id} className="space-y-1 rounded-md bg-card/60 p-3 text-sm shadow-sm">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{m.user?.nickname ?? "Bilinmeyen"}</span>
-                  <span className="text-[10px] text-muted-foreground">
-                    {new Date(m.createdAt).toLocaleTimeString("tr-TR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    })}
-                  </span>
-                </div>
-                <p className="text-sm leading-snug text-foreground">{m.content}</p>
-              </div>
+              <MessageItem
+                key={m.id}
+                message={m}
+                isOwn={m.user?.id === chatUserId}
+                activeRoomSlug={activeRoomSlug ?? ""}
+              />
             ))}
             <div ref={messagesEndRef} />
           </div>
