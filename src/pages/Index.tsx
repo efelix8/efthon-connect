@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import MessageItem from "@/components/MessageItem";
 import CreateRoomDialog from "@/components/CreateRoomDialog";
 import ImageUpload from "@/components/ImageUpload";
+import logoWatermark from "@/assets/logo-watermark.png";
 
 const MAX_ROOMS = 10;
 
@@ -160,8 +161,20 @@ const Index = () => {
   }
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground">
-      <aside className="hidden w-64 flex-shrink-0 border-r border-border bg-card/60 p-4 md:flex md:flex-col">
+    <div className="relative flex min-h-screen bg-background text-foreground">
+      {/* Background logo watermark */}
+      <div 
+        className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center"
+        aria-hidden="true"
+      >
+        <img 
+          src={logoWatermark} 
+          alt="" 
+          className="h-[60vh] w-auto opacity-10"
+        />
+      </div>
+
+      <aside className="relative z-10 hidden w-64 flex-shrink-0 border-r border-border bg-card/60 p-4 md:flex md:flex-col">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold tracking-tight">Odalar</h2>
         </div>
@@ -196,7 +209,7 @@ const Index = () => {
         </button>
       </aside>
 
-      <main className="flex flex-1 flex-col">
+      <main className="relative z-10 flex flex-1 flex-col">
         <header className="flex items-center justify-between border-b border-border bg-card/60 px-4 py-3">
           <div>
             <h1 className="text-base font-semibold">
