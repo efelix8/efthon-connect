@@ -8,6 +8,7 @@ export interface Room {
   name: string;
   is_default?: boolean;
   created_at?: string;
+  created_by?: string;
 }
 
 export interface ChatUser {
@@ -18,6 +19,7 @@ export interface ChatUser {
 export interface ChatMessage {
   id: string;
   content: string;
+  imageUrl?: string | null;
   createdAt: string;
   editedAt: string | null;
   roomId: string;
@@ -36,6 +38,10 @@ interface MessagesResponse {
 interface SendMessageResponse {
   room: Pick<Room, "id" | "slug" | "name">;
   message: ChatMessage;
+}
+
+interface CreateRoomResponse {
+  room: Room;
 }
 
 interface NicknameResponse {
@@ -80,9 +86,13 @@ export const fetchMessages = async (
   return authorizedGet<MessagesResponse>(`/messages?${params.toString()}`, accessToken);
 };
 
-export const sendMessage = async (roomSlug: string, content: string): Promise<ChatMessage> => {
+export const sendMessage = async (
+  roomSlug: string, 
+  content: string, 
+  imageUrl?: string
+): Promise<ChatMessage> => {
   const { data, error } = await supabase.functions.invoke<SendMessageResponse>("messages", {
-    body: { room: roomSlug, content },
+    body: { room: roomSlug, content, imageUrl },
   });
 
   if (error) {
@@ -140,4 +150,42 @@ export const setNickname = async (nickname: string): Promise<NicknameResponse> =
   }
 
   return data;
+};
+
+export const createRoom = async (name: string): Promise<Room> => {
+  const { data, error } = await supabase.functions.invoke<CreateRoomResponse>("rooms", {
+    body: { name },
+  });
+
+  if (error) {
+    throw new Error(error.message || "Oda oluşturulurken bir hata oluştu");
+  }
+
+  if (!data) {
+    throw new Error("Beklenmeyen yanıt alındı");
+  }
+
+  return data.room;
+};
+
+export const uploadChatImage = async (file: File, userId: string): Promise<string> => {
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${userId}/${Date.now()}.${fileExt}`;
+  
+  const { error } = await supabase.storage
+    .from('chat-images')
+    .upload(fileName, file, {
+      cacheControl: '3600',
+      upsert: false,
+    });
+
+  if (error) {
+    throw new Error(error.message || "Fotoğraf yüklenirken bir hata oluştu");
+  }
+
+  const { data: { publicUrl } } = supabase.storage
+    .from('chat-images')
+    .getPublicUrl(fileName);
+
+  return publicUrl;
 };

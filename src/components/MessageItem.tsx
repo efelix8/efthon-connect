@@ -18,6 +18,7 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
+  const [imageExpanded, setImageExpanded] = useState(false);
 
   const editMutation = useMutation({
     mutationFn: () => editMessage(message.id, editContent),
@@ -121,7 +122,24 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
           </Button>
         </div>
       ) : (
-        <p className="text-sm leading-snug text-foreground">{message.content}</p>
+        <div className="space-y-2">
+          {message.content && (
+            <p className="text-sm leading-snug text-foreground">{message.content}</p>
+          )}
+          {message.imageUrl && (
+            <div className="relative">
+              <img
+                src={message.imageUrl}
+                alt="Paylaşılan fotoğraf"
+                className={`rounded-md border border-border cursor-pointer transition-all ${
+                  imageExpanded ? "max-w-full" : "max-w-xs max-h-48 object-cover"
+                }`}
+                onClick={() => setImageExpanded(!imageExpanded)}
+                loading="lazy"
+              />
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
