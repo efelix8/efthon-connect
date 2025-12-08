@@ -96,6 +96,36 @@ export const sendMessage = async (roomSlug: string, content: string): Promise<Ch
   return data.message;
 };
 
+export const editMessage = async (messageId: string, content: string): Promise<void> => {
+  const { error } = await supabase.functions.invoke("messages", {
+    method: "PUT",
+    body: { messageId, content },
+  });
+
+  if (error) {
+    throw new Error(error.message || "Mesaj düzenlenirken bir hata oluştu");
+  }
+};
+
+export const deleteMessage = async (messageId: string): Promise<void> => {
+  const session = await supabase.auth.getSession();
+  const accessToken = session.data.session?.access_token;
+  
+  if (!accessToken) throw new Error("Oturum bulunamadı");
+
+  const res = await fetch(`${FUNCTION_BASE}/messages?id=${messageId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || "Mesaj silinirken bir hata oluştu");
+  }
+};
+
 export const setNickname = async (nickname: string): Promise<NicknameResponse> => {
   const { data, error } = await supabase.functions.invoke<NicknameResponse>("auth-nickname", {
     body: { nickname },
