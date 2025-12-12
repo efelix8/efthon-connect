@@ -148,7 +148,7 @@ async function handlePost(req: Request): Promise<Response> {
     return jsonResponse({ error: "Content must be at most 500 characters" }, { status: 400 });
   }
 
-  // Validate image URL - must be from our storage bucket
+  // Validate file URL - must be from our storage bucket
   let imageUrl: string | null = null;
   if (rawImageUrl) {
     const allowedPatterns = [
@@ -158,7 +158,7 @@ async function handlePost(req: Request): Promise<Response> {
     const isValidUrl = allowedPatterns.some(pattern => rawImageUrl.startsWith(pattern));
     
     if (!isValidUrl) {
-      return jsonResponse({ error: "Invalid image URL. Only images from the chat storage are allowed." }, { status: 400 });
+      return jsonResponse({ error: "Invalid file URL. Only files from the chat storage are allowed." }, { status: 400 });
     }
     imageUrl = rawImageUrl;
   }

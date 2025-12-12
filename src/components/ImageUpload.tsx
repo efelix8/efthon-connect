@@ -1,27 +1,29 @@
 import { useRef, useState } from "react";
-import { Image, X, Loader2 } from "lucide-react";
+import { Paperclip, X, Loader2, FileText, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { uploadChatImage } from "@/lib/chat-api";
+import { uploadChatFile } from "@/lib/chat-api";
 
-interface ImageUploadProps {
+interface FileUploadProps {
   userId: string;
-  onImageUploaded: (imageUrl: string) => void;
-  onImageRemoved: () => void;
-  imagePreview: string | null;
+  onFileUploaded: (fileUrl: string, fileType: "image" | "pdf") => void;
+  onFileRemoved: () => void;
+  filePreview: { url: string; type: "image" | "pdf" } | null;
   disabled?: boolean;
 }
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+const ALLOWED_PDF_TYPE = "application/pdf";
+const ALLOWED_TYPES = [...ALLOWED_IMAGE_TYPES, ALLOWED_PDF_TYPE];
 
-const ImageUpload = ({
+const FileUpload = ({
   userId,
-  onImageUploaded,
-  onImageRemoved,
-  imagePreview,
+  onFileUploaded,
+  onFileRemoved,
+  filePreview,
   disabled,
-}: ImageUploadProps) => {
+}: FileUploadProps) => {
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -40,7 +42,7 @@ const ImageUpload = ({
       toast({
         variant: "destructive",
         title: "Geçersiz dosya türü",
-        description: "Sadece JPEG, PNG, GIF ve WebP dosyaları yükleyebilirsiniz.",
+        description: "Sadece JPEG, PNG, GIF, WebP ve PDF dosyaları yükleyebilirsiniz.",
       });
       return;
     }
@@ -50,20 +52,21 @@ const ImageUpload = ({
       toast({
         variant: "destructive",
         title: "Dosya çok büyük",
-        description: "Maksimum dosya boyutu 5MB olmalıdır.",
+        description: "Maksimum dosya boyutu 10MB olmalıdır.",
       });
       return;
     }
 
     setUploading(true);
     try {
-      const imageUrl = await uploadChatImage(file, userId);
-      onImageUploaded(imageUrl);
+      const fileUrl = await uploadChatFile(file, userId);
+      const fileType = file.type === ALLOWED_PDF_TYPE ? "pdf" : "image";
+      onFileUploaded(fileUrl, fileType);
     } catch (error: any) {
       toast({
         variant: "destructive",
         title: "Yükleme hatası",
-        description: error.message || "Fotoğraf yüklenirken bir hata oluştu.",
+        description: error.message || "Dosya yüklenirken bir hata oluştu.",
       });
     } finally {
       setUploading(false);
@@ -81,19 +84,25 @@ const ImageUpload = ({
         disabled={disabled || uploading}
       />
 
-      {imagePreview ? (
+      {filePreview ? (
         <div className="relative">
-          <img
-            src={imagePreview}
-            alt="Önizleme"
-            className="h-10 w-10 rounded-md object-cover border border-border"
-          />
+          {filePreview.type === "image" ? (
+            <img
+              src={filePreview.url}
+              alt="Önizleme"
+              className="h-10 w-10 rounded-md object-cover border border-border"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-md border border-border bg-muted">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+          )}
           <Button
             type="button"
             variant="destructive"
             size="icon"
             className="absolute -top-2 -right-2 h-5 w-5 rounded-full"
-            onClick={onImageRemoved}
+            onClick={onFileRemoved}
             disabled={disabled}
           >
             <X className="h-3 w-3" />
@@ -106,12 +115,12 @@ const ImageUpload = ({
           size="icon"
           onClick={() => fileInputRef.current?.click()}
           disabled={disabled || uploading}
-          title="Fotoğraf ekle"
+          title="Dosya ekle (Fotoğraf veya PDF)"
         >
           {uploading ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Image className="h-4 w-4" />
+            <Paperclip className="h-4 w-4" />
           )}
         </Button>
       )}
@@ -119,4 +128,4 @@ const ImageUpload = ({
   );
 };
 
-export default ImageUpload;
+export default FileUpload;

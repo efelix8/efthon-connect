@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import MessageItem from "@/components/MessageItem";
 import CreateRoomDialog from "@/components/CreateRoomDialog";
-import ImageUpload from "@/components/ImageUpload";
+import FileUpload from "@/components/ImageUpload";
 import logoWatermark from "@/assets/logo-watermark.png";
 
 const MAX_ROOMS = 10;
@@ -26,7 +26,7 @@ const Index = () => {
 
   const [activeRoomSlug, setActiveRoomSlug] = useState<string | null>(null);
   const [message, setMessage] = useState("");
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<{ url: string; type: "image" | "pdf" } | null>(null);
   
   const { activeUsers } = usePresence(user?.id);
 
@@ -132,11 +132,11 @@ const Index = () => {
   const sendMessageMutation = useMutation({
     mutationFn: () => {
       if (!activeRoomSlug) throw new Error("Oda seçili değil");
-      return sendMessage(activeRoomSlug, message, uploadedImageUrl || undefined);
+      return sendMessage(activeRoomSlug, message, uploadedFile?.url || undefined);
     },
     onSuccess: () => {
       setMessage("");
-      setUploadedImageUrl(null);
+      setUploadedFile(null);
       if (activeRoomSlug) {
         queryClient.invalidateQueries({ queryKey: ["messages", activeRoomSlug] });
       }
@@ -152,7 +152,7 @@ const Index = () => {
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() && !uploadedImageUrl) return;
+    if (!message.trim() && !uploadedFile) return;
     sendMessageMutation.mutate();
   };
 
@@ -252,11 +252,11 @@ const Index = () => {
           <form onSubmit={handleSend} className="border-t border-border bg-card/60 px-4 py-3">
             <div className="flex gap-2 items-center">
               {user?.id && (
-                <ImageUpload
+                <FileUpload
                   userId={user.id}
-                  onImageUploaded={(url) => setUploadedImageUrl(url)}
-                  onImageRemoved={() => setUploadedImageUrl(null)}
-                  imagePreview={uploadedImageUrl}
+                  onFileUploaded={(url, type) => setUploadedFile({ url, type })}
+                  onFileRemoved={() => setUploadedFile(null)}
+                  filePreview={uploadedFile}
                   disabled={sendMessageMutation.isPending}
                 />
               )}
@@ -269,7 +269,7 @@ const Index = () => {
               />
               <Button 
                 type="submit" 
-                disabled={sendMessageMutation.isPending || (!message.trim() && !uploadedImageUrl)}
+                disabled={sendMessageMutation.isPending || (!message.trim() && !uploadedFile)}
               >
                 Gönder
               </Button>
