@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, X, Check } from "lucide-react";
+import { Pencil, Trash2, X, Check, FileText, ExternalLink } from "lucide-react";
 
 import { editMessage, deleteMessage, type ChatMessage } from "@/lib/chat-api";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,11 @@ interface MessageItemProps {
   isOwn: boolean;
   activeRoomSlug: string;
 }
+
+const isPdfUrl = (url: string | null | undefined): boolean => {
+  if (!url) return false;
+  return url.toLowerCase().endsWith(".pdf");
+};
 
 const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
   const { toast } = useToast();
@@ -52,6 +57,8 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
     setIsEditing(false);
     setEditContent(message.content);
   };
+
+  const isPdf = isPdfUrl(message.imageUrl);
 
   return (
     <div className="group space-y-1 rounded-md bg-card/60 p-3 text-sm shadow-sm">
@@ -127,17 +134,33 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
             <p className="text-sm leading-snug text-foreground">{message.content}</p>
           )}
           {message.imageUrl && (
-            <div className="relative">
-              <img
-                src={message.imageUrl}
-                alt="Paylaşılan fotoğraf"
-                className={`rounded-md border border-border cursor-pointer transition-all ${
-                  imageExpanded ? "max-w-full" : "max-w-xs max-h-48 object-cover"
-                }`}
-                onClick={() => setImageExpanded(!imageExpanded)}
-                loading="lazy"
-              />
-            </div>
+            isPdf ? (
+              <a
+                href={message.imageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-md border border-border bg-muted/50 p-3 hover:bg-muted transition-colors"
+              >
+                <FileText className="h-8 w-8 text-primary" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">PDF Dosyası</p>
+                  <p className="text-xs text-muted-foreground">Görüntülemek için tıklayın</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </a>
+            ) : (
+              <div className="relative">
+                <img
+                  src={message.imageUrl}
+                  alt="Paylaşılan fotoğraf"
+                  className={`rounded-md border border-border cursor-pointer transition-all ${
+                    imageExpanded ? "max-w-full" : "max-w-xs max-h-48 object-cover"
+                  }`}
+                  onClick={() => setImageExpanded(!imageExpanded)}
+                  loading="lazy"
+                />
+              </div>
+            )
           )}
         </div>
       )}

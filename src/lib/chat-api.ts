@@ -168,7 +168,7 @@ export const createRoom = async (name: string): Promise<Room> => {
   return data.room;
 };
 
-export const uploadChatImage = async (file: File, userId: string): Promise<string> => {
+export const uploadChatFile = async (file: File, userId: string): Promise<string> => {
   const fileExt = file.name.split('.').pop();
   const fileName = `${userId}/${Date.now()}.${fileExt}`;
   
@@ -180,7 +180,7 @@ export const uploadChatImage = async (file: File, userId: string): Promise<strin
     });
 
   if (error) {
-    throw new Error(error.message || "Fotoğraf yüklenirken bir hata oluştu");
+    throw new Error(error.message || "Dosya yüklenirken bir hata oluştu");
   }
 
   const { data: { publicUrl } } = supabase.storage
@@ -189,3 +189,6 @@ export const uploadChatImage = async (file: File, userId: string): Promise<strin
 
   return publicUrl;
 };
+
+// Backwards compatibility alias
+export const uploadChatImage = uploadChatFile;
