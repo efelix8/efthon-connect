@@ -11,8 +11,6 @@ interface MessageItemProps {
   message: ChatMessage;
   isOwn: boolean;
   activeRoomSlug: string;
-  isFirstInGroup?: boolean;
-  isLastInGroup?: boolean;
 }
 
 const isPdfUrl = (url: string | null | undefined): boolean => {
@@ -20,7 +18,7 @@ const isPdfUrl = (url: string | null | undefined): boolean => {
   return url.toLowerCase().endsWith(".pdf");
 };
 
-const MessageItem = ({ message, isOwn, activeRoomSlug, isFirstInGroup = true, isLastInGroup = true }: MessageItemProps) => {
+const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -63,92 +61,23 @@ const MessageItem = ({ message, isOwn, activeRoomSlug, isFirstInGroup = true, is
   const isPdf = isPdfUrl(message.imageUrl);
 
   return (
-    <div className={`group text-sm ${isFirstInGroup ? 'pt-2' : 'pt-0.5'} ${isLastInGroup ? 'pb-2' : 'pb-0.5'} px-3`}>
-      {isFirstInGroup && (
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{message.user?.nickname ?? "Bilinmeyen"}</span>
-          </div>
-        </div>
-      )}
-      <div className="flex items-start gap-2">
-        <div className="flex-1 min-w-0">
-          {isEditing ? (
-            <div className="flex gap-2">
-              <Input
-                value={editContent}
-                onChange={(e) => setEditContent(e.target.value)}
-                className="h-8 text-sm"
-                disabled={editMutation.isPending}
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleEdit}
-                disabled={editMutation.isPending || !editContent.trim()}
-              >
-                <Check className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={handleCancelEdit}
-                disabled={editMutation.isPending}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {message.content && (
-                <p className="text-sm leading-snug text-foreground">{message.content}</p>
-              )}
-              {message.imageUrl && (
-                isPdf ? (
-                  <a
-                    href={message.imageUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 rounded-md border border-border bg-muted/50 p-3 hover:bg-muted transition-colors max-w-xs"
-                  >
-                    <FileText className="h-8 w-8 text-primary" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">PDF Dosyası</p>
-                      <p className="text-xs text-muted-foreground">Görüntülemek için tıklayın</p>
-                    </div>
-                    <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                  </a>
-                ) : (
-                  <div className="relative">
-                    <img
-                      src={message.imageUrl}
-                      alt="Paylaşılan fotoğraf"
-                      className={`rounded-md border border-border cursor-pointer transition-all ${
-                        imageExpanded ? "max-w-full" : "max-w-xs max-h-48 object-cover"
-                      }`}
-                      onClick={() => setImageExpanded(!imageExpanded)}
-                      loading="lazy"
-                    />
-                  </div>
-                )
-              )}
-            </div>
+    <div className="group space-y-1 rounded-md bg-card/60 p-3 text-sm shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{message.user?.nickname ?? "Bilinmeyen"}</span>
+          {message.editedAt && (
+            <span className="text-[10px] text-muted-foreground">(düzenlendi)</span>
           )}
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1">
+          <span className="text-[10px] text-muted-foreground">
             {new Date(message.createdAt).toLocaleTimeString("tr-TR", {
               hour: "2-digit",
               minute: "2-digit",
             })}
           </span>
-          {message.editedAt && (
-            <span className="text-[10px] text-muted-foreground">(düzenlendi)</span>
-          )}
           {isOwn && !isEditing && (
-            <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="ml-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
               <Button
                 variant="ghost"
                 size="icon"
@@ -171,8 +100,71 @@ const MessageItem = ({ message, isOwn, activeRoomSlug, isFirstInGroup = true, is
           )}
         </div>
       </div>
-    </div>
       
+      {isEditing ? (
+        <div className="flex gap-2">
+          <Input
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            className="h-8 text-sm"
+            disabled={editMutation.isPending}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleEdit}
+            disabled={editMutation.isPending || !editContent.trim()}
+          >
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={handleCancelEdit}
+            disabled={editMutation.isPending}
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {message.content && (
+            <p className="text-sm leading-snug text-foreground">{message.content}</p>
+          )}
+          {message.imageUrl && (
+            isPdf ? (
+              <a
+                href={message.imageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 rounded-md border border-border bg-muted/50 p-3 hover:bg-muted transition-colors"
+              >
+                <FileText className="h-8 w-8 text-primary" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">PDF Dosyası</p>
+                  <p className="text-xs text-muted-foreground">Görüntülemek için tıklayın</p>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground" />
+              </a>
+            ) : (
+              <div className="relative">
+                <img
+                  src={message.imageUrl}
+                  alt="Paylaşılan fotoğraf"
+                  className={`rounded-md border border-border cursor-pointer transition-all ${
+                    imageExpanded ? "max-w-full" : "max-w-xs max-h-48 object-cover"
+                  }`}
+                  onClick={() => setImageExpanded(!imageExpanded)}
+                  loading="lazy"
+                />
+              </div>
+            )
+          )}
+        </div>
+      )}
+    </div>
   );
 };
 

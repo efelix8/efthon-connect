@@ -231,34 +231,21 @@ const Index = () => {
 
 
         <section className="flex flex-1 flex-col">
-          <div className="flex-1 overflow-y-auto px-4 py-4">
+          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
             {messagesLoading && (
               <p className="text-xs text-muted-foreground">Mesajlar yükleniyor...</p>
             )}
             {!messagesLoading && messages.length === 0 && (
               <p className="text-xs text-muted-foreground">Bu odada henüz mesaj yok.</p>
             )}
-            {messages.map((m, index) => {
-              const prevMessage = messages[index - 1];
-              const nextMessage = messages[index + 1];
-              const isFirstInGroup = !prevMessage || prevMessage.user?.id !== m.user?.id;
-              const isLastInGroup = !nextMessage || nextMessage.user?.id !== m.user?.id;
-              
-              return (
-                <div 
-                  key={m.id} 
-                  className={`${isFirstInGroup ? 'mt-3' : ''} ${isFirstInGroup ? 'rounded-t-md' : ''} ${isLastInGroup ? 'rounded-b-md' : ''} bg-card/60 ${isLastInGroup ? 'shadow-sm' : ''}`}
-                >
-                  <MessageItem
-                    message={m}
-                    isOwn={m.user?.id === chatUserId}
-                    activeRoomSlug={activeRoomSlug ?? ""}
-                    isFirstInGroup={isFirstInGroup}
-                    isLastInGroup={isLastInGroup}
-                  />
-                </div>
-              );
-            })}
+            {messages.map((m) => (
+              <MessageItem
+                key={m.id}
+                message={m}
+                isOwn={m.user?.id === chatUserId}
+                activeRoomSlug={activeRoomSlug ?? ""}
+              />
+            ))}
             <div ref={messagesEndRef} />
           </div>
 
