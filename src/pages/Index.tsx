@@ -131,9 +131,9 @@ const Index = () => {
   
 
   const sendMessageMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: (imageUrl?: string) => {
       if (!activeRoomSlug) throw new Error("Oda seçili değil");
-      return sendMessage(activeRoomSlug, message, uploadedFile?.url || undefined);
+      return sendMessage(activeRoomSlug, message, imageUrl || uploadedFile?.url || undefined);
     },
     onSuccess: () => {
       setMessage("");
@@ -154,7 +154,11 @@ const Index = () => {
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim() && !uploadedFile) return;
-    sendMessageMutation.mutate();
+    sendMessageMutation.mutate(undefined);
+  };
+
+  const handleImageStickerSelect = (imageUrl: string) => {
+    sendMessageMutation.mutate(imageUrl);
   };
 
   if (loading || !user) {
@@ -263,6 +267,7 @@ const Index = () => {
               )}
               <StickerPicker
                 onStickerSelect={(sticker) => setMessage((prev) => prev + sticker)}
+                onImageStickerSelect={handleImageStickerSelect}
                 disabled={sendMessageMutation.isPending}
               />
               <Input
