@@ -14,8 +14,6 @@ import { Separator } from "@/components/ui/separator";
 import MessageItem from "@/components/MessageItem";
 import CreateRoomDialog from "@/components/CreateRoomDialog";
 import FileUpload from "@/components/ImageUpload";
-import StickerPicker from "@/components/StickerPicker";
-import ReplyPreview from "@/components/ReplyPreview";
 import logoWatermark from "@/assets/logo-watermark.png";
 
 const MAX_ROOMS = 10;
@@ -29,7 +27,6 @@ const Index = () => {
   const [activeRoomSlug, setActiveRoomSlug] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [uploadedFile, setUploadedFile] = useState<{ url: string; type: "image" | "pdf" } | null>(null);
-  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   
   const { activeUsers } = usePresence(user?.id);
 
@@ -135,12 +132,11 @@ const Index = () => {
   const sendMessageMutation = useMutation({
     mutationFn: () => {
       if (!activeRoomSlug) throw new Error("Oda seçili değil");
-      return sendMessage(activeRoomSlug, message, uploadedFile?.url || undefined, replyTo?.id);
+      return sendMessage(activeRoomSlug, message, uploadedFile?.url || undefined);
     },
     onSuccess: () => {
       setMessage("");
       setUploadedFile(null);
-      setReplyTo(null);
       if (activeRoomSlug) {
         queryClient.invalidateQueries({ queryKey: ["messages", activeRoomSlug] });
       }
@@ -158,14 +154,6 @@ const Index = () => {
     e.preventDefault();
     if (!message.trim() && !uploadedFile) return;
     sendMessageMutation.mutate();
-  };
-
-  const handleStickerSelect = (sticker: string) => {
-    setMessage((prev) => prev + sticker);
-  };
-
-  const handleReply = (msg: ChatMessage) => {
-    setReplyTo(msg);
   };
 
   if (loading || !user) {
@@ -256,15 +244,11 @@ const Index = () => {
                 message={m}
                 isOwn={m.user?.id === chatUserId}
                 activeRoomSlug={activeRoomSlug ?? ""}
-                onReply={handleReply}
               />
             ))}
             <div ref={messagesEndRef} />
           </div>
 
-          {replyTo && (
-            <ReplyPreview replyTo={replyTo} onCancel={() => setReplyTo(null)} />
-          )}
           <form onSubmit={handleSend} className="border-t border-border bg-card/60 px-4 py-3">
             <div className="flex gap-2 items-center">
               {user?.id && (
@@ -276,10 +260,6 @@ const Index = () => {
                   disabled={sendMessageMutation.isPending}
                 />
               )}
-              <StickerPicker 
-                onStickerSelect={handleStickerSelect} 
-                disabled={sendMessageMutation.isPending}
-              />
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}

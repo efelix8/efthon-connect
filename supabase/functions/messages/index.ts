@@ -83,9 +83,8 @@ async function handleGet(req: Request): Promise<Response> {
   let query = supabase
     .from("messages")
     .select(
-      `id, content, image_url, created_at, edited_at, room_id, reply_to_id,
-       user:users ( id, nickname ),
-       reply_to:messages!reply_to_id ( id, content, user:users ( nickname ) )`
+      `id, content, image_url, created_at, edited_at, room_id,
+       user:users ( id, nickname )`
     )
     .eq("room_id", room.id)
     .order("created_at", { ascending: false })
@@ -109,12 +108,6 @@ async function handleGet(req: Request): Promise<Response> {
     createdAt: m.created_at,
     editedAt: m.edited_at,
     roomId: m.room_id,
-    replyToId: m.reply_to_id,
-    replyTo: m.reply_to ? {
-      id: m.reply_to.id,
-      content: m.reply_to.content,
-      user: m.reply_to.user,
-    } : null,
     user: m.user,
   }));
 
@@ -134,14 +127,13 @@ async function handlePost(req: Request): Promise<Response> {
   }
 
   const body = await req.json().catch(() => null) as
-    | { room?: string; content?: string; imageUrl?: string; replyToId?: string }
+    | { room?: string; content?: string; imageUrl?: string }
     | null;
 
   const roomSlug = body?.room?.trim();
   const rawImageUrl = body?.imageUrl?.trim() || null;
   const rawContent = body?.content ?? "";
   const content = rawContent.trim();
-  const replyToId = body?.replyToId?.trim() || null;
 
   if (!roomSlug) {
     return jsonResponse({ error: "Room is required" }, { status: 400 });
@@ -217,9 +209,8 @@ async function handlePost(req: Request): Promise<Response> {
       user_id: chatUser.id,
       content: content || "",
       image_url: imageUrl,
-      reply_to_id: replyToId,
     })
-    .select("id, content, image_url, created_at, edited_at, room_id, reply_to_id")
+    .select("id, content, image_url, created_at, edited_at, room_id")
     .single();
 
   if (insertError) {
@@ -234,7 +225,6 @@ async function handlePost(req: Request): Promise<Response> {
     createdAt: inserted.created_at,
     editedAt: inserted.edited_at,
     roomId: inserted.room_id,
-    replyToId: inserted.reply_to_id,
     user: chatUser,
   };
 
