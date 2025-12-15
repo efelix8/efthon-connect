@@ -244,22 +244,23 @@ async function handlePut(req: Request): Promise<Response> {
   }
 
   const body = await req.json().catch(() => null) as
-    | { messageId?: string; content?: string }
+    | { messageId?: string; content?: string; removeImage?: boolean }
     | null;
 
   const messageId = body?.messageId?.trim();
   const rawContent = body?.content ?? "";
   const content = rawContent.trim();
+  const removeImage = body?.removeImage === true;
 
   if (!messageId) {
     return jsonResponse({ error: "Message ID is required" }, { status: 400 });
   }
 
-  if (!content) {
+  if (!content && !removeImage) {
     return jsonResponse({ error: "Content is required" }, { status: 400 });
   }
 
-  if (content.length > 500) {
+  if (content && content.length > 500) {
     return jsonResponse({ error: "Content must be at most 500 characters" }, { status: 400 });
   }
 
@@ -277,18 +278,28 @@ async function handlePut(req: Request): Promise<Response> {
     return jsonResponse({ error: "User not found" }, { status: 400 });
   }
 
+  // Build update object
+  const updateData: { content?: string; image_url?: null; edited_at: string } = {
+    edited_at: new Date().toISOString(),
+  };
+
+  if (content) {
+    updateData.content = content;
+  }
+
+  if (removeImage) {
+    updateData.image_url = null;
+  }
+
   const {
     data: updated,
     error: updateError,
   } = await supabase
     .from("messages")
-    .update({
-      content,
-      edited_at: new Date().toISOString(),
-    })
+    .update(updateData)
     .eq("id", messageId)
     .eq("user_id", chatUser.id)
-    .select("id, content, created_at, edited_at, room_id")
+    .select("id, content, image_url, created_at, edited_at, room_id")
     .maybeSingle();
 
   if (updateError) {
@@ -304,6 +315,7 @@ async function handlePut(req: Request): Promise<Response> {
     message: {
       id: updated.id,
       content: updated.content,
+      imageUrl: updated.image_url,
       createdAt: updated.created_at,
       editedAt: updated.edited_at,
       roomId: updated.room_id,

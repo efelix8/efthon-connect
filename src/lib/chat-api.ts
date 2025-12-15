@@ -117,6 +117,17 @@ export const editMessage = async (messageId: string, content: string): Promise<v
   }
 };
 
+export const removeMessageImage = async (messageId: string): Promise<void> => {
+  const { error } = await supabase.functions.invoke("messages", {
+    method: "PUT",
+    body: { messageId, removeImage: true },
+  });
+
+  if (error) {
+    throw new Error(error.message || "Fotoğraf kaldırılırken bir hata oluştu");
+  }
+};
+
 export const deleteMessage = async (messageId: string): Promise<void> => {
   const session = await supabase.auth.getSession();
   const accessToken = session.data.session?.access_token;
