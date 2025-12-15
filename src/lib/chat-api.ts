@@ -107,24 +107,44 @@ export const sendMessage = async (
 };
 
 export const editMessage = async (messageId: string, content: string): Promise<void> => {
-  const { error } = await supabase.functions.invoke("messages", {
+  const session = await supabase.auth.getSession();
+  const accessToken = session.data.session?.access_token;
+  
+  if (!accessToken) throw new Error("Oturum bulunamadı");
+
+  const res = await fetch(`${FUNCTION_BASE}/messages`, {
     method: "PUT",
-    body: { messageId, content },
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ messageId, content }),
   });
 
-  if (error) {
-    throw new Error(error.message || "Mesaj düzenlenirken bir hata oluştu");
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || "Mesaj düzenlenirken bir hata oluştu");
   }
 };
 
 export const removeMessageImage = async (messageId: string): Promise<void> => {
-  const { error } = await supabase.functions.invoke("messages", {
+  const session = await supabase.auth.getSession();
+  const accessToken = session.data.session?.access_token;
+  
+  if (!accessToken) throw new Error("Oturum bulunamadı");
+
+  const res = await fetch(`${FUNCTION_BASE}/messages`, {
     method: "PUT",
-    body: { messageId, removeImage: true },
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ messageId, removeImage: true }),
   });
 
-  if (error) {
-    throw new Error(error.message || "Fotoğraf kaldırılırken bir hata oluştu");
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || "Fotoğraf kaldırılırken bir hata oluştu");
   }
 };
 
