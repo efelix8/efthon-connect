@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator";
 import MessageItem from "@/components/MessageItem";
 import CreateRoomDialog from "@/components/CreateRoomDialog";
 import FileUpload from "@/components/ImageUpload";
+import StickerPicker from "@/components/StickerPicker";
 import logoWatermark from "@/assets/logo-watermark.png";
 
 const MAX_ROOMS = 10;
@@ -260,6 +261,10 @@ const Index = () => {
                   disabled={sendMessageMutation.isPending}
                 />
               )}
+              <StickerPicker
+                onStickerSelect={(sticker) => setMessage((prev) => prev + sticker)}
+                disabled={sendMessageMutation.isPending}
+              />
               <Input
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
