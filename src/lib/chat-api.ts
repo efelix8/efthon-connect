@@ -23,6 +23,12 @@ export interface ChatMessage {
   createdAt: string;
   editedAt: string | null;
   roomId: string;
+  replyToId?: string | null;
+  replyTo?: {
+    id: string;
+    content: string;
+    user: ChatUser;
+  } | null;
   user: ChatUser;
 }
 
@@ -89,10 +95,11 @@ export const fetchMessages = async (
 export const sendMessage = async (
   roomSlug: string, 
   content: string, 
-  imageUrl?: string
+  imageUrl?: string,
+  replyToId?: string
 ): Promise<ChatMessage> => {
   const { data, error } = await supabase.functions.invoke<SendMessageResponse>("messages", {
-    body: { room: roomSlug, content, imageUrl },
+    body: { room: roomSlug, content, imageUrl, replyToId },
   });
 
   if (error) {

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, X, Check, FileText, ExternalLink } from "lucide-react";
+import { Pencil, Trash2, X, Check, FileText, ExternalLink, Reply, CornerDownRight } from "lucide-react";
 
 import { editMessage, deleteMessage, type ChatMessage } from "@/lib/chat-api";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ interface MessageItemProps {
   message: ChatMessage;
   isOwn: boolean;
   activeRoomSlug: string;
+  onReply?: (message: ChatMessage) => void;
 }
 
 const isPdfUrl = (url: string | null | undefined): boolean => {
@@ -18,7 +19,7 @@ const isPdfUrl = (url: string | null | undefined): boolean => {
   return url.toLowerCase().endsWith(".pdf");
 };
 
-const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
+const MessageItem = ({ message, isOwn, activeRoomSlug, onReply }: MessageItemProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
@@ -62,6 +63,17 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
 
   return (
     <div className="group space-y-1 rounded-md bg-card/60 p-3 text-sm shadow-sm">
+      {/* Reply reference */}
+      {message.replyTo && (
+        <div className="flex items-start gap-1.5 mb-2 pl-2 border-l-2 border-primary/50">
+          <CornerDownRight className="h-3 w-3 mt-0.5 text-muted-foreground shrink-0" />
+          <div className="min-w-0">
+            <span className="text-xs font-medium text-primary">{message.replyTo.user?.nickname ?? "Bilinmeyen"}</span>
+            <p className="text-xs text-muted-foreground truncate">{message.replyTo.content || "📎 Dosya"}</p>
+          </div>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="font-medium">{message.user?.nickname ?? "Bilinmeyen"}</span>
@@ -76,28 +88,41 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
               minute: "2-digit",
             })}
           </span>
-          {isOwn && !isEditing && (
-            <div className="ml-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <div className="ml-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            {onReply && (
               <Button
                 variant="ghost"
                 size="icon"
                 className="h-6 w-6"
-                onClick={() => setIsEditing(true)}
+                onClick={() => onReply(message)}
                 disabled={editMutation.isPending || deleteMutation.isPending}
               >
-                <Pencil className="h-3 w-3" />
+                <Reply className="h-3 w-3" />
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-destructive hover:text-destructive"
-                onClick={() => deleteMutation.mutate()}
-                disabled={editMutation.isPending || deleteMutation.isPending}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
+            )}
+            {isOwn && !isEditing && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setIsEditing(true)}
+                  disabled={editMutation.isPending || deleteMutation.isPending}
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:text-destructive"
+                  onClick={() => deleteMutation.mutate()}
+                  disabled={editMutation.isPending || deleteMutation.isPending}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
       
