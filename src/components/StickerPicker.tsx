@@ -13,6 +13,10 @@ import divanSticker from "@/assets/stickers/divan.png";
 import herseySticker from "@/assets/stickers/hersey.png";
 import imagesSticker from "@/assets/stickers/images.jpg";
 import cinemaSticker from "@/assets/stickers/cinema.png";
+import omerSticker from "@/assets/stickers/omer.png";
+import chatgptSticker from "@/assets/stickers/chatgpt.png";
+import galoisSticker from "@/assets/stickers/galois.jpg";
+import shhSticker from "@/assets/stickers/shh.jpg";
 
 const EMOJI_STICKERS = [
   "😀", "😂", "🤣", "😍", "🥰", "😎", "🤩", "😇",
@@ -28,6 +32,10 @@ const CUSTOM_STICKERS = [
   { id: "hersey", src: herseySticker, alt: "Her şeyi bilen biri" },
   { id: "images", src: imagesSticker, alt: "Images" },
   { id: "cinema", src: cinemaSticker, alt: "Absolute Cinema" },
+  { id: "omer", src: omerSticker, alt: "Ömer" },
+  { id: "chatgpt", src: chatgptSticker, alt: "ChatGPT" },
+  { id: "galois", src: galoisSticker, alt: "Galois" },
+  { id: "shh", src: shhSticker, alt: "Shh" },
 ];
 
 interface StickerPickerProps {
