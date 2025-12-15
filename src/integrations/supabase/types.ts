@@ -22,6 +22,7 @@ export type Database = {
           edited_at: string | null
           id: string
           image_url: string | null
+          reply_to_id: string | null
           room_id: string
           user_id: string
         }
@@ -32,6 +33,7 @@ export type Database = {
           edited_at?: string | null
           id?: string
           image_url?: string | null
+          reply_to_id?: string | null
           room_id: string
           user_id: string
         }
@@ -42,10 +44,18 @@ export type Database = {
           edited_at?: string | null
           id?: string
           image_url?: string | null
+          reply_to_id?: string | null
           room_id?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "messages_room_id_fkey"
             columns: ["room_id"]
