@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, X, Check, FileText, ExternalLink, Download } from "lucide-react";
+import { Pencil, Trash2, X, Check, FileText, ExternalLink, Download, ImageOff } from "lucide-react";
 
-import { editMessage, deleteMessage, type ChatMessage } from "@/lib/chat-api";
+import { editMessage, deleteMessage, removeMessageImage, type ChatMessage } from "@/lib/chat-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +45,17 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
     },
     onError: (error: any) => {
       toast({ variant: "destructive", title: "Hata", description: error?.message ?? "Mesaj silinemedi." });
+    },
+  });
+
+  const removeImageMutation = useMutation({
+    mutationFn: () => removeMessageImage(message.id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["messages", activeRoomSlug] });
+      toast({ title: "Başarılı", description: "Fotoğraf kaldırıldı." });
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Hata", description: error?.message ?? "Fotoğraf kaldırılamadı." });
     },
   });
 
@@ -159,16 +170,31 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
                   onClick={() => setImageExpanded(!imageExpanded)}
                   loading="lazy"
                 />
-                <a
-                  href={message.imageUrl}
-                  download
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="absolute top-2 right-2 opacity-0 group-hover/image:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm rounded-md p-1.5 hover:bg-background"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Download className="h-4 w-4" />
-                </a>
+                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover/image:opacity-100 transition-opacity">
+                  <a
+                    href={message.imageUrl}
+                    download
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="bg-background/80 backdrop-blur-sm rounded-md p-1.5 hover:bg-background"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Download className="h-4 w-4" />
+                  </a>
+                  {isOwn && (
+                    <button
+                      type="button"
+                      className="bg-background/80 backdrop-blur-sm rounded-md p-1.5 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeImageMutation.mutate();
+                      }}
+                      disabled={removeImageMutation.isPending}
+                    >
+                      <ImageOff className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             )
           )}
