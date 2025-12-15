@@ -183,7 +183,7 @@ const Index = () => {
         />
       </div>
 
-      <aside className="relative z-10 hidden w-64 flex-shrink-0 border-r border-border bg-card/60 p-4 md:flex md:flex-col">
+      <aside className="fixed left-0 top-0 z-10 hidden h-screen w-64 flex-shrink-0 border-r border-border bg-card/60 p-4 md:flex md:flex-col">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold tracking-tight">Odalar</h2>
         </div>
@@ -218,7 +218,7 @@ const Index = () => {
         </button>
       </aside>
 
-      <main className="relative z-10 flex flex-1 flex-col">
+      <main className="relative z-10 ml-0 flex flex-1 flex-col md:ml-64">
         <header className="flex items-center justify-between border-b border-border bg-card/60 px-4 py-3">
           <div>
             <h1 className="text-base font-semibold">
