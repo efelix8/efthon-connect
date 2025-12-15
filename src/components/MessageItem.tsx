@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, X, Check, FileText, ExternalLink } from "lucide-react";
+import { Pencil, Trash2, X, Check, FileText, ExternalLink, Download } from "lucide-react";
 
 import { editMessage, deleteMessage, type ChatMessage } from "@/lib/chat-api";
 import { Button } from "@/components/ui/button";
@@ -149,7 +149,7 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
                 <ExternalLink className="h-4 w-4 text-muted-foreground" />
               </a>
             ) : (
-              <div className="relative">
+              <div className="relative group/image">
                 <img
                   src={message.imageUrl}
                   alt="Paylaşılan fotoğraf"
@@ -159,6 +159,16 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
                   onClick={() => setImageExpanded(!imageExpanded)}
                   loading="lazy"
                 />
+                <a
+                  href={message.imageUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="absolute top-2 right-2 opacity-0 group-hover/image:opacity-100 transition-opacity bg-background/80 backdrop-blur-sm rounded-md p-1.5 hover:bg-background"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Download className="h-4 w-4" />
+                </a>
               </div>
             )
           )}
