@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Lock } from "lucide-react";
+import { Users, Lock, Video } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { usePresence } from "@/hooks/use-presence";
+import { useVideoCall } from "@/hooks/use-video-call";
 import { fetchRooms, fetchMessages, sendMessage, type Room, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ import CreateRoomDialog from "@/components/CreateRoomDialog";
 import FileUpload from "@/components/ImageUpload";
 import StickerPicker from "@/components/StickerPicker";
 import { RoomPasswordDialog } from "@/components/RoomPasswordDialog";
+import { VideoCall } from "@/components/VideoCall";
 import logoWatermark from "@/assets/logo-watermark.png";
 
 const MAX_ROOMS = 10;
@@ -109,6 +111,18 @@ const Index = () => {
   });
 
   const chatUserId = chatUserData?.id ?? null;
+
+  const {
+    isInCall,
+    localStream,
+    peers,
+    isMuted,
+    isVideoOff,
+    joinCall,
+    leaveCall,
+    toggleMute,
+    toggleVideo,
+  } = useVideoCall(activeRoomSlug ?? "", chatUserId ?? undefined);
 
   const messages = useMemo(() => {
     if (!messagesResponse) return [] as ChatMessage[];
@@ -253,6 +267,16 @@ const Index = () => {
               <p className="text-xs text-muted-foreground">Gerçek zamanlı sınıf sohbeti</p>
             </div>
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={joinCall}
+                disabled={!activeRoomSlug}
+                className="gap-1.5"
+              >
+                <Video className="h-3.5 w-3.5" />
+                Aramaya Katıl
+              </Button>
               <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1">
                 <Users className="h-3.5 w-3.5 text-primary" />
                 <span className="font-medium text-primary">{activeUsers} çevrimiçi</span>
@@ -321,6 +345,18 @@ const Index = () => {
         roomSlug={passwordDialog.room?.slug ?? ""}
         onSuccess={() => passwordDialog.room && handleRoomUnlocked(passwordDialog.room.slug)}
       />
+
+      {isInCall && (
+        <VideoCall
+          localStream={localStream}
+          peers={peers}
+          isMuted={isMuted}
+          isVideoOff={isVideoOff}
+          onToggleMute={toggleMute}
+          onToggleVideo={toggleVideo}
+          onLeave={leaveCall}
+        />
+      )}
     </>
   );
 };
