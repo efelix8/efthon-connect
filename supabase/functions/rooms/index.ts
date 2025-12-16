@@ -64,7 +64,7 @@ async function handleGet(req: Request): Promise<Response> {
 
   const { data, error } = await supabase
     .from("rooms")
-    .select("id, slug, name, is_default, created_at, created_by")
+    .select("id, slug, name, is_default, created_at, created_by, password_hash")
     .order("is_default", { ascending: false })
     .order("name", { ascending: true });
 
@@ -73,7 +73,18 @@ async function handleGet(req: Request): Promise<Response> {
     return jsonResponse({ error: "Failed to fetch rooms" }, { status: 500 });
   }
 
-  return jsonResponse({ rooms: data ?? [] });
+  // Transform data to not expose password_hash, just indicate if password exists
+  const rooms = (data ?? []).map(room => ({
+    id: room.id,
+    slug: room.slug,
+    name: room.name,
+    is_default: room.is_default,
+    created_at: room.created_at,
+    created_by: room.created_by,
+    has_password: !!room.password_hash,
+  }));
+
+  return jsonResponse({ rooms });
 }
 
 async function handlePost(req: Request): Promise<Response> {

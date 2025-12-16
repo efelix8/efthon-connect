@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users } from "lucide-react";
+import { Users, Lock } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -15,6 +15,7 @@ import MessageItem from "@/components/MessageItem";
 import CreateRoomDialog from "@/components/CreateRoomDialog";
 import FileUpload from "@/components/ImageUpload";
 import StickerPicker from "@/components/StickerPicker";
+import { RoomPasswordDialog } from "@/components/RoomPasswordDialog";
 import logoWatermark from "@/assets/logo-watermark.png";
 
 const MAX_ROOMS = 10;
@@ -28,6 +29,11 @@ const Index = () => {
   const [activeRoomSlug, setActiveRoomSlug] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [uploadedFile, setUploadedFile] = useState<{ url: string; type: "image" | "pdf" } | null>(null);
+  const [unlockedRooms, setUnlockedRooms] = useState<Set<string>>(new Set());
+  const [passwordDialog, setPasswordDialog] = useState<{ open: boolean; room: Room | null }>({
+    open: false,
+    room: null,
+  });
   
   const { activeUsers } = usePresence(user?.id);
 
@@ -60,8 +66,24 @@ const Index = () => {
   useEffect(() => {
     if (!rooms || rooms.length === 0) return;
     const defaultRoom = rooms.find((r) => r.is_default) ?? rooms[0];
-    setActiveRoomSlug((current) => current ?? defaultRoom.slug);
-  }, [rooms]);
+    // Only auto-select if room doesn't require password or is already unlocked
+    if (!defaultRoom.has_password || unlockedRooms.has(defaultRoom.slug)) {
+      setActiveRoomSlug((current) => current ?? defaultRoom.slug);
+    }
+  }, [rooms, unlockedRooms]);
+
+  const handleRoomSelect = (room: Room) => {
+    if (room.has_password && !unlockedRooms.has(room.slug)) {
+      setPasswordDialog({ open: true, room });
+    } else {
+      setActiveRoomSlug(room.slug);
+    }
+  };
+
+  const handleRoomUnlocked = (roomSlug: string) => {
+    setUnlockedRooms((prev) => new Set(prev).add(roomSlug));
+    setActiveRoomSlug(roomSlug);
+  };
 
   const {
     data: messagesResponse,
@@ -170,124 +192,136 @@ const Index = () => {
   }
 
   return (
-    <div className="relative flex min-h-screen bg-background text-foreground">
-      {/* Background logo watermark */}
-      <div 
-        className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center"
-        aria-hidden="true"
-      >
-        <img 
-          src={logoWatermark} 
-          alt="" 
-          className="h-[60vh] w-auto opacity-10"
-        />
-      </div>
-
-      <aside className="fixed left-0 top-0 z-10 hidden h-screen w-64 flex-shrink-0 border-r border-border bg-card/60 p-4 md:flex md:flex-col">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold tracking-tight">Odalar</h2>
-        </div>
-        <div className="flex-1 space-y-1 overflow-y-auto">
-          {roomsLoading && <p className="text-xs text-muted-foreground">Odalar yükleniyor...</p>}
-          {roomsError && <p className="text-xs text-destructive">Odalar yüklenemedi.</p>}
-          {rooms?.map((room) => (
-            <button
-              key={room.id}
-              type="button"
-              onClick={() => setActiveRoomSlug(room.slug)}
-              className={`flex w-full items-center rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                activeRoomSlug === room.slug
-                  ? "bg-primary text-primary-foreground"
-                  : "hover:bg-accent hover:text-accent-foreground"
-              }`}
-            >
-              <span className="truncate">{room.name}</span>
-            </button>
-          ))}
-        </div>
-        <div className="mt-2">
-          <CreateRoomDialog roomCount={rooms?.length ?? 0} maxRooms={MAX_ROOMS} />
-        </div>
-        <Separator className="my-4" />
-        <button
-          type="button"
-          onClick={() => signOut()}
-          className="w-full rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+    <>
+      <div className="relative flex min-h-screen bg-background text-foreground">
+        {/* Background logo watermark */}
+        <div 
+          className="pointer-events-none fixed inset-0 z-0 flex items-center justify-center"
+          aria-hidden="true"
         >
-          Çıkış yap
-        </button>
-      </aside>
+          <img 
+            src={logoWatermark} 
+            alt="" 
+            className="h-[60vh] w-auto opacity-10"
+          />
+        </div>
 
-      <main className="relative z-10 ml-0 flex flex-1 flex-col md:ml-64">
-        <header className="flex items-center justify-between border-b border-border bg-card/60 px-4 py-3">
-          <div>
-            <h1 className="text-base font-semibold">
-              {messagesResponse?.room?.name ?? "Sohbet"}
-            </h1>
-            <p className="text-xs text-muted-foreground">Gerçek zamanlı sınıf sohbeti</p>
+        <aside className="fixed left-0 top-0 z-10 hidden h-screen w-64 flex-shrink-0 border-r border-border bg-card/60 p-4 md:flex md:flex-col">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-sm font-semibold tracking-tight">Odalar</h2>
           </div>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1">
-              <Users className="h-3.5 w-3.5 text-primary" />
-              <span className="font-medium text-primary">{activeUsers} çevrimiçi</span>
-            </div>
-          </div>
-        </header>
-
-
-        <section className="flex flex-1 flex-col">
-          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-            {messagesLoading && (
-              <p className="text-xs text-muted-foreground">Mesajlar yükleniyor...</p>
-            )}
-            {!messagesLoading && messages.length === 0 && (
-              <p className="text-xs text-muted-foreground">Bu odada henüz mesaj yok.</p>
-            )}
-            {messages.map((m) => (
-              <MessageItem
-                key={m.id}
-                message={m}
-                isOwn={m.user?.id === chatUserId}
-                activeRoomSlug={activeRoomSlug ?? ""}
-              />
+          <div className="flex-1 space-y-1 overflow-y-auto">
+            {roomsLoading && <p className="text-xs text-muted-foreground">Odalar yükleniyor...</p>}
+            {roomsError && <p className="text-xs text-destructive">Odalar yüklenemedi.</p>}
+            {rooms?.map((room) => (
+              <button
+                key={room.id}
+                type="button"
+                onClick={() => handleRoomSelect(room)}
+                className={`flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                  activeRoomSlug === room.slug
+                    ? "bg-primary text-primary-foreground"
+                    : "hover:bg-accent hover:text-accent-foreground"
+                }`}
+              >
+                <span className="truncate">{room.name}</span>
+                {room.has_password && !unlockedRooms.has(room.slug) && (
+                  <Lock className="h-3.5 w-3.5 flex-shrink-0 opacity-60" />
+                )}
+              </button>
             ))}
-            <div ref={messagesEndRef} />
           </div>
+          <div className="mt-2">
+            <CreateRoomDialog roomCount={rooms?.length ?? 0} maxRooms={MAX_ROOMS} />
+          </div>
+          <Separator className="my-4" />
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="w-full rounded-md border border-border px-3 py-2 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+          >
+            Çıkış yap
+          </button>
+        </aside>
 
-          <form onSubmit={handleSend} className="border-t border-border bg-card/60 px-4 py-3">
-            <div className="flex gap-2 items-center">
-              {user?.id && (
-                <FileUpload
-                  userId={user.id}
-                  onFileUploaded={(url, type) => setUploadedFile({ url, type })}
-                  onFileRemoved={() => setUploadedFile(null)}
-                  filePreview={uploadedFile}
+        <main className="relative z-10 ml-0 flex flex-1 flex-col md:ml-64">
+          <header className="flex items-center justify-between border-b border-border bg-card/60 px-4 py-3">
+            <div>
+              <h1 className="text-base font-semibold">
+                {messagesResponse?.room?.name ?? "Sohbet"}
+              </h1>
+              <p className="text-xs text-muted-foreground">Gerçek zamanlı sınıf sohbeti</p>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1">
+                <Users className="h-3.5 w-3.5 text-primary" />
+                <span className="font-medium text-primary">{activeUsers} çevrimiçi</span>
+              </div>
+            </div>
+          </header>
+
+          <section className="flex flex-1 flex-col">
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+              {messagesLoading && (
+                <p className="text-xs text-muted-foreground">Mesajlar yükleniyor...</p>
+              )}
+              {!messagesLoading && messages.length === 0 && (
+                <p className="text-xs text-muted-foreground">Bu odada henüz mesaj yok.</p>
+              )}
+              {messages.map((m) => (
+                <MessageItem
+                  key={m.id}
+                  message={m}
+                  isOwn={m.user?.id === chatUserId}
+                  activeRoomSlug={activeRoomSlug ?? ""}
+                />
+              ))}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <form onSubmit={handleSend} className="border-t border-border bg-card/60 px-4 py-3">
+              <div className="flex gap-2 items-center">
+                {user?.id && (
+                  <FileUpload
+                    userId={user.id}
+                    onFileUploaded={(url, type) => setUploadedFile({ url, type })}
+                    onFileRemoved={() => setUploadedFile(null)}
+                    filePreview={uploadedFile}
+                    disabled={sendMessageMutation.isPending}
+                  />
+                )}
+                <StickerPicker
+                  onStickerSelect={(sticker) => setMessage((prev) => prev + sticker)}
+                  onImageStickerSelect={handleImageStickerSelect}
                   disabled={sendMessageMutation.isPending}
                 />
-              )}
-              <StickerPicker
-                onStickerSelect={(sticker) => setMessage((prev) => prev + sticker)}
-                onImageStickerSelect={handleImageStickerSelect}
-                disabled={sendMessageMutation.isPending}
-              />
-              <Input
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                placeholder="Mesajını yaz..."
-                disabled={sendMessageMutation.isPending}
-                className="flex-1"
-              />
-              <Button 
-                type="submit" 
-                disabled={sendMessageMutation.isPending || (!message.trim() && !uploadedFile)}
-              >
-                Gönder
-              </Button>
-            </div>
-          </form>
-        </section>
-      </main>
-    </div>
+                <Input
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Mesajını yaz..."
+                  disabled={sendMessageMutation.isPending}
+                  className="flex-1"
+                />
+                <Button 
+                  type="submit" 
+                  disabled={sendMessageMutation.isPending || (!message.trim() && !uploadedFile)}
+                >
+                  Gönder
+                </Button>
+              </div>
+            </form>
+          </section>
+        </main>
+      </div>
+
+      <RoomPasswordDialog
+        open={passwordDialog.open}
+        onOpenChange={(open) => setPasswordDialog({ open, room: open ? passwordDialog.room : null })}
+        roomName={passwordDialog.room?.name ?? ""}
+        roomSlug={passwordDialog.room?.slug ?? ""}
+        onSuccess={() => passwordDialog.room && handleRoomUnlocked(passwordDialog.room.slug)}
+      />
+    </>
   );
 };
 
