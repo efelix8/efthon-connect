@@ -96,8 +96,62 @@ export const fetchMessages = async (
   limit: number = 30,
 ): Promise<MessagesResponse> => {
   if (!accessToken) throw new Error("Oturum bulunamadı");
-  const params = new URLSearchParams({ room: roomSlug, limit: String(limit) });
-  return authorizedGet<MessagesResponse>(`/messages?${params.toString()}`, accessToken);
+
+  // Get room first
+  const { data: room, error: roomError } = await supabase
+    .from("rooms")
+    .select("id, slug, name")
+    .eq("slug", roomSlug)
+    .single();
+
+  if (roomError || !room) throw new Error("Oda bulunamadı");
+
+  // Fetch messages with user info directly
+  const { data: messages, error: msgError } = await supabase
+    .from("messages")
+    .select(`
+      id,
+      content,
+      image_url,
+      created_at,
+      edited_at,
+      room_id,
+      delivered_at,
+      user_id,
+      users_public!messages_user_id_fkey (id, nickname)
+    `)
+    .eq("room_id", room.id)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (msgError) throw new Error(msgError.message);
+
+  // Get read counts
+  const messageIds = (messages || []).map(m => m.id);
+  const { data: readCounts } = await supabase
+    .from("message_reads")
+    .select("message_id")
+    .in("message_id", messageIds);
+
+  const readCountMap = new Map<string, number>();
+  (readCounts || []).forEach(r => {
+    readCountMap.set(r.message_id, (readCountMap.get(r.message_id) || 0) + 1);
+  });
+
+  const formattedMessages: ChatMessage[] = (messages || []).map(m => ({
+    id: m.id,
+    content: m.content,
+    imageUrl: m.image_url,
+    createdAt: m.created_at,
+    editedAt: m.edited_at,
+    roomId: m.room_id,
+    deliveredAt: m.delivered_at,
+    readCount: readCountMap.get(m.id) || 0,
+    user: m.users_public ? { id: m.users_public.id!, nickname: m.users_public.nickname! } : null,
+  }));
+
+  return { room, messages: formattedMessages };
 };
 
 export const sendMessage = async (
