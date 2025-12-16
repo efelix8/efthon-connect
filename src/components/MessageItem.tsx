@@ -83,34 +83,27 @@ const MessageItem = ({ message, isOwn, activeRoomSlug, isFirstInGroup = true, is
       isLastInGroup ? "rounded-b-md pb-3" : "pb-1",
       !isFirstInGroup && !isLastInGroup && "bg-card/60 px-3 py-1"
     )}>
-      {showHeader && (
-        <div className="flex items-center justify-between mb-1">
-          <div className="flex items-center gap-2">
-            <span className="font-medium">{message.user?.nickname ?? "Bilinmeyen"}</span>
-          </div>
-          <div className="flex items-center gap-1">
-            {isOwn && !isEditing && (
-              <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={() => setIsEditing(true)}
-                  disabled={editMutation.isPending || deleteMutation.isPending}
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-destructive hover:text-destructive"
-                  onClick={() => deleteMutation.mutate()}
-                  disabled={editMutation.isPending || deleteMutation.isPending}
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
+      {showHeader && isOwn && !isEditing && (
+        <div className="flex justify-end mb-1">
+          <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={() => setIsEditing(true)}
+              disabled={editMutation.isPending || deleteMutation.isPending}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 text-destructive hover:text-destructive"
+              onClick={() => deleteMutation.mutate()}
+              disabled={editMutation.isPending || deleteMutation.isPending}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
           </div>
         </div>
       )}
