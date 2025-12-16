@@ -18,6 +18,7 @@ const ICE_SERVERS: RTCConfiguration = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
+    { urls: "stun:stun2.l.google.com:19302" },
   ],
 };
 
@@ -30,6 +31,17 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
   
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const peersRef = useRef<Map<string, Peer>>(new Map());
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const userIdRef = useRef<string | undefined>(userId);
+
+  // Keep refs in sync
+  useEffect(() => {
+    localStreamRef.current = localStream;
+  }, [localStream]);
+
+  useEffect(() => {
+    userIdRef.current = userId;
+  }, [userId]);
 
   const createPeerConnection = useCallback((peerId: string): RTCPeerConnection => {
     console.log(`Creating peer connection for ${peerId}`);
@@ -43,7 +55,7 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
           event: "signal",
           payload: {
             type: "ice-candidate",
-            from: userId,
+            from: userIdRef.current,
             to: peerId,
             payload: event.candidate.toJSON(),
           } as SignalMessage,
@@ -52,12 +64,13 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
     };
 
     pc.ontrack = (event) => {
-      console.log(`Received track from ${peerId}`);
+      console.log(`Received track from ${peerId}`, event.streams);
       const peer = peersRef.current.get(peerId);
       if (peer) {
         peer.stream = event.streams[0];
         peersRef.current.set(peerId, peer);
         setPeers(new Map(peersRef.current));
+        console.log(`Updated peer ${peerId} with stream`, peer.stream);
       }
     };
 
@@ -68,8 +81,16 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
       }
     };
 
+    pc.onnegotiationneeded = () => {
+      console.log(`Negotiation needed for ${peerId}`);
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      console.log(`ICE connection state for ${peerId}: ${pc.iceConnectionState}`);
+    };
+
     return pc;
-  }, [userId]);
+  }, []);
 
   const removePeer = useCallback((peerId: string) => {
     console.log(`Removing peer ${peerId}`);
@@ -82,8 +103,11 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
   }, []);
 
   const handleSignal = useCallback(async (message: SignalMessage) => {
-    if (!userId || message.from === userId) return;
-    if (message.to && message.to !== userId) return;
+    const currentUserId = userIdRef.current;
+    const currentLocalStream = localStreamRef.current;
+    
+    if (!currentUserId || message.from === currentUserId) return;
+    if (message.to && message.to !== currentUserId) return;
 
     console.log(`Handling signal: ${message.type} from ${message.from}`);
 
@@ -98,10 +122,16 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
         }
 
         // Add local tracks
-        if (localStream) {
-          localStream.getTracks().forEach((track) => {
-            peer!.connection.addTrack(track, localStream);
+        if (currentLocalStream) {
+          console.log("Adding local tracks to peer connection for join");
+          currentLocalStream.getTracks().forEach((track) => {
+            const senders = peer!.connection.getSenders();
+            if (!senders.find(s => s.track === track)) {
+              peer!.connection.addTrack(track, currentLocalStream);
+            }
           });
+        } else {
+          console.warn("No local stream available when handling join");
         }
 
         // Create and send offer
@@ -113,7 +143,7 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
           event: "signal",
           payload: {
             type: "offer",
-            from: userId,
+            from: currentUserId,
             to: message.from,
             payload: offer,
           } as SignalMessage,
@@ -130,13 +160,17 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
           peersRef.current.set(message.from, peer);
         }
 
-        // Add local tracks
-        if (localStream) {
-          localStream.getTracks().forEach((track) => {
-            if (!peer!.connection.getSenders().find(s => s.track === track)) {
-              peer!.connection.addTrack(track, localStream);
+        // Add local tracks before setting remote description
+        if (currentLocalStream) {
+          console.log("Adding local tracks to peer connection for offer");
+          currentLocalStream.getTracks().forEach((track) => {
+            const senders = peer!.connection.getSenders();
+            if (!senders.find(s => s.track === track)) {
+              peer!.connection.addTrack(track, currentLocalStream);
             }
           });
+        } else {
+          console.warn("No local stream available when handling offer");
         }
 
         await peer.connection.setRemoteDescription(new RTCSessionDescription(message.payload as RTCSessionDescriptionInit));
@@ -148,7 +182,7 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
           event: "signal",
           payload: {
             type: "answer",
-            from: userId,
+            from: currentUserId,
             to: message.from,
             payload: answer,
           } as SignalMessage,
@@ -160,6 +194,7 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
       case "answer": {
         const peer = peersRef.current.get(message.from);
         if (peer && peer.connection.signalingState !== "stable") {
+          console.log("Setting remote description from answer");
           await peer.connection.setRemoteDescription(new RTCSessionDescription(message.payload as RTCSessionDescriptionInit));
         }
         break;
@@ -169,6 +204,7 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
         const peer = peersRef.current.get(message.from);
         if (peer && message.payload) {
           try {
+            console.log("Adding ICE candidate");
             await peer.connection.addIceCandidate(new RTCIceCandidate(message.payload as RTCIceCandidateInit));
           } catch (e) {
             console.error("Error adding ICE candidate:", e);
@@ -182,7 +218,7 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
         break;
       }
     }
-  }, [userId, localStream, createPeerConnection, removePeer]);
+  }, [createPeerConnection, removePeer]);
 
   const joinCall = useCallback(async () => {
     if (!userId || !roomSlug) return;
@@ -193,7 +229,11 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
         video: true,
         audio: true,
       });
+      
+      // Set both state and ref immediately
+      localStreamRef.current = stream;
       setLocalStream(stream);
+      console.log("Local stream obtained:", stream.getTracks());
 
       // Set up signaling channel
       const channel = supabase.channel(`video-call-${roomSlug}`);
@@ -206,15 +246,17 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
         .subscribe(async (status) => {
           if (status === "SUBSCRIBED") {
             console.log("Subscribed to video call channel");
-            // Announce joining
-            channel.send({
-              type: "broadcast",
-              event: "signal",
-              payload: {
-                type: "join",
-                from: userId,
-              } as SignalMessage,
-            });
+            // Small delay to ensure everything is set up
+            setTimeout(() => {
+              channel.send({
+                type: "broadcast",
+                event: "signal",
+                payload: {
+                  type: "join",
+                  from: userId,
+                } as SignalMessage,
+              });
+            }, 100);
           }
         });
 
@@ -228,13 +270,13 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
     console.log("Leaving call...");
 
     // Notify others
-    if (channelRef.current && userId) {
+    if (channelRef.current && userIdRef.current) {
       channelRef.current.send({
         type: "broadcast",
         event: "signal",
         payload: {
           type: "leave",
-          from: userId,
+          from: userIdRef.current,
         } as SignalMessage,
       });
     }
@@ -247,8 +289,9 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
     setPeers(new Map());
 
     // Stop local stream
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop());
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current = null;
       setLocalStream(null);
     }
 
@@ -261,32 +304,38 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
     setIsInCall(false);
     setIsMuted(false);
     setIsVideoOff(false);
-  }, [userId, localStream]);
+  }, []);
 
   const toggleMute = useCallback(() => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach((track) => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
       setIsMuted(!isMuted);
     }
-  }, [localStream, isMuted]);
+  }, [isMuted]);
 
   const toggleVideo = useCallback(() => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach((track) => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getVideoTracks().forEach((track) => {
         track.enabled = !track.enabled;
       });
       setIsVideoOff(!isVideoOff);
     }
-  }, [localStream, isVideoOff]);
+  }, [isVideoOff]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (isInCall) {
-        leaveCall();
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach((track) => track.stop());
       }
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+      }
+      peersRef.current.forEach((peer) => {
+        peer.connection.close();
+      });
     };
   }, []);
 
