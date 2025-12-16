@@ -58,7 +58,7 @@ export const SiteGate = ({ children }: SiteGateProps) => {
       <img
         src={siteGateBg}
         alt=""
-        className="absolute inset-0 h-full w-full object-cover opacity-10 pointer-events-none"
+        className="absolute inset-0 m-auto h-[70%] w-[70%] object-contain opacity-10 pointer-events-none"
       />
       <Card className="relative z-10 w-full max-w-sm border-border bg-card shadow-sm">
         <CardHeader className="space-y-2 text-center">
