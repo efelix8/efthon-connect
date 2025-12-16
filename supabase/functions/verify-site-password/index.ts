@@ -12,17 +12,22 @@ serve(async (req) => {
 
   try {
     const { password } = await req.json();
-    const sitePassword = Deno.env.get("SITE_ACCESS_PASSWORD");
-
-    if (!sitePassword) {
-      console.error("SITE_ACCESS_PASSWORD not configured");
-      return new Response(
-        JSON.stringify({ error: "Server configuration error" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    
+    // Multiple valid passwords
+    const validPasswords = [
+      "enesabipardon",
+      "zeynepidigü",
+      "sinangür",
+      "elifnalbantoğlu",
+    ];
+    
+    // Also check the environment variable password if set
+    const envPassword = Deno.env.get("SITE_ACCESS_PASSWORD");
+    if (envPassword) {
+      validPasswords.push(envPassword);
     }
 
-    const isValid = password === sitePassword;
+    const isValid = validPasswords.includes(password);
     console.log(`Password verification attempt: ${isValid ? "success" : "failed"}`);
 
     return new Response(
