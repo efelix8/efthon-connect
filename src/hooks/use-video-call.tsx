@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
+export type ConnectionType = "direct" | "stun" | "turn" | "unknown";
+
 interface Peer {
   id: string;
   connection: RTCPeerConnection;
   stream?: MediaStream;
+  connectionType?: ConnectionType;
 }
 
 interface SignalMessage {
@@ -62,6 +65,41 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
     userIdRef.current = userId;
   }, [userId]);
 
+  const detectConnectionType = useCallback((pc: RTCPeerConnection, peerId: string) => {
+    pc.getStats().then((stats) => {
+      stats.forEach((report) => {
+        if (report.type === "candidate-pair" && report.state === "succeeded") {
+          const localCandidateId = report.localCandidateId;
+          const remoteCandidateId = report.remoteCandidateId;
+          
+          stats.forEach((candidateReport) => {
+            if (candidateReport.id === localCandidateId || candidateReport.id === remoteCandidateId) {
+              let connectionType: ConnectionType = "unknown";
+              const candidateType = candidateReport.candidateType;
+              
+              if (candidateType === "host") {
+                connectionType = "direct";
+              } else if (candidateType === "srflx" || candidateType === "prflx") {
+                connectionType = "stun";
+              } else if (candidateType === "relay") {
+                connectionType = "turn";
+              }
+              
+              console.log(`Connection type for ${peerId}: ${connectionType} (${candidateType})`);
+              
+              const peer = peersRef.current.get(peerId);
+              if (peer && peer.connectionType !== connectionType) {
+                peer.connectionType = connectionType;
+                peersRef.current.set(peerId, peer);
+                setPeers(new Map(peersRef.current));
+              }
+            }
+          });
+        }
+      });
+    });
+  }, []);
+
   const createPeerConnection = useCallback((peerId: string): RTCPeerConnection => {
     console.log(`Creating peer connection for ${peerId}`);
     const pc = new RTCPeerConnection(ICE_SERVERS);
@@ -95,6 +133,10 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
 
     pc.onconnectionstatechange = () => {
       console.log(`Connection state for ${peerId}: ${pc.connectionState}`);
+      if (pc.connectionState === "connected") {
+        // Check connection type after connection is established
+        setTimeout(() => detectConnectionType(pc, peerId), 1000);
+      }
       if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
         removePeer(peerId);
       }
