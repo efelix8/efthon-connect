@@ -32,14 +32,31 @@ const VideoTile = ({
   isLarge?: boolean;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [hasVideo, setHasVideo] = useState(false);
 
   useEffect(() => {
     if (videoRef.current && stream) {
       videoRef.current.srcObject = stream;
+      
+      // Check for video tracks
+      const videoTracks = stream.getVideoTracks();
+      setHasVideo(videoTracks.length > 0 && videoTracks[0].enabled);
+      
+      // Listen for track changes
+      const handleTrackChange = () => {
+        const tracks = stream.getVideoTracks();
+        setHasVideo(tracks.length > 0 && tracks[0].enabled);
+      };
+      
+      stream.addEventListener('addtrack', handleTrackChange);
+      stream.addEventListener('removetrack', handleTrackChange);
+      
+      return () => {
+        stream.removeEventListener('addtrack', handleTrackChange);
+        stream.removeEventListener('removetrack', handleTrackChange);
+      };
     }
   }, [stream]);
-
-  const hasVideo = stream && stream.getVideoTracks().length > 0 && stream.getVideoTracks()[0].enabled;
 
   return (
     <div 
@@ -54,18 +71,22 @@ const VideoTile = ({
       {/* Gradient background */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900" />
       
-      {stream && hasVideo ? (
+      {/* Video element - always render if stream exists */}
+      {stream && (
         <video
           ref={videoRef}
           autoPlay
           playsInline
           muted={isMuted}
           className={cn(
-            "relative w-full h-full object-cover",
-            isLarge ? "aspect-video" : ""
+            "absolute inset-0 w-full h-full object-cover z-10",
+            !hasVideo && "hidden"
           )}
         />
-      ) : (
+      )}
+
+      {/* Avatar fallback - show when no stream OR when video is disabled */}
+      {(!stream || !hasVideo) && (
         <div className="relative w-full h-full flex items-center justify-center aspect-video">
           {/* Animated background rings */}
           <div className="absolute inset-0 flex items-center justify-center">
