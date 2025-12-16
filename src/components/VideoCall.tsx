@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, Maximize2, Minimize2 } from "lucide-react";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, Maximize2, Minimize2, Wifi, Globe, Server } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { ConnectionType } from "@/hooks/use-video-call";
 
 interface Peer {
   id: string;
   stream?: MediaStream;
+  connectionType?: ConnectionType;
 }
 
 interface VideoCallProps {
@@ -18,18 +20,38 @@ interface VideoCallProps {
   onLeave: () => void;
 }
 
+const ConnectionBadge = ({ type }: { type?: ConnectionType }) => {
+  const config = {
+    direct: { icon: Wifi, label: "Doğrudan", color: "text-green-400", bg: "bg-green-500/20" },
+    stun: { icon: Globe, label: "STUN", color: "text-blue-400", bg: "bg-blue-500/20" },
+    turn: { icon: Server, label: "TURN", color: "text-yellow-400", bg: "bg-yellow-500/20" },
+    unknown: { icon: Wifi, label: "Bağlanıyor", color: "text-white/60", bg: "bg-white/10" },
+  };
+  
+  const { icon: Icon, label, color, bg } = config[type || "unknown"];
+  
+  return (
+    <div className={cn("flex items-center gap-1.5 px-2 py-1 rounded-full", bg)}>
+      <Icon className={cn("h-3 w-3", color)} />
+      <span className={cn("text-[10px] font-medium", color)}>{label}</span>
+    </div>
+  );
+};
+
 const VideoTile = ({ 
   stream, 
   label, 
   isMuted,
   isLocal = false,
   isLarge = false,
+  connectionType,
 }: { 
   stream: MediaStream | null; 
   label: string; 
   isMuted?: boolean;
   isLocal?: boolean;
   isLarge?: boolean;
+  connectionType?: ConnectionType;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [hasVideo, setHasVideo] = useState(false);
@@ -127,10 +149,14 @@ const VideoTile = ({
 
       {/* Connection indicator */}
       <div className="absolute top-3 right-3">
-        <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
-          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[10px] text-white/70">Bağlı</span>
-        </div>
+        {isLocal ? (
+          <div className="flex items-center gap-1.5 bg-black/60 backdrop-blur-sm px-2 py-1 rounded-full">
+            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+            <span className="text-[10px] text-white/70">Sen</span>
+          </div>
+        ) : (
+          <ConnectionBadge type={connectionType} />
+        )}
       </div>
     </div>
   );
@@ -228,6 +254,7 @@ export const VideoCall = ({
                   stream={peer.stream || null}
                   label={`Kullanıcı ${peer.id.slice(0, 4)}`}
                   isLarge
+                  connectionType={peer.connectionType}
                 />
               ))}
             </div>
