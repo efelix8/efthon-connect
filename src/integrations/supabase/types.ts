@@ -235,6 +235,94 @@ export type Database = {
           },
         ]
       }
+      voice_room_participants: {
+        Row: {
+          id: string
+          is_deafened: boolean
+          is_muted: boolean
+          joined_at: string
+          user_id: string
+          voice_room_id: string
+        }
+        Insert: {
+          id?: string
+          is_deafened?: boolean
+          is_muted?: boolean
+          joined_at?: string
+          user_id: string
+          voice_room_id: string
+        }
+        Update: {
+          id?: string
+          is_deafened?: boolean
+          is_muted?: boolean
+          joined_at?: string
+          user_id?: string
+          voice_room_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_room_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_room_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_room_participants_voice_room_id_fkey"
+            columns: ["voice_room_id"]
+            isOneToOne: false
+            referencedRelation: "voice_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      voice_rooms: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          name?: string
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "voice_rooms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "voice_rooms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       users_public: {
