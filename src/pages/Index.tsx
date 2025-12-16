@@ -96,6 +96,8 @@ const Index = () => {
     queryKey: ["messages", activeRoomSlug],
     queryFn: () => fetchMessages(accessToken, activeRoomSlug!),
     enabled: !!accessToken && !!activeRoomSlug,
+    staleTime: 1000 * 60 * 5, // 5 dakika cache
+    gcTime: 1000 * 60 * 10, // 10 dakika bellekte tut
   });
 
   // Get current user's chat user ID
