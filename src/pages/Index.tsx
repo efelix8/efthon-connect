@@ -137,6 +137,7 @@ const Index = () => {
     leaveRoom: leaveVoiceRoom,
     toggleMute: toggleVoiceMute,
     toggleDeafen,
+    refetchRooms: refetchVoiceRooms,
   } = useVoiceChat(chatUserId ?? undefined);
 
   const messages = useMemo(() => {
@@ -489,6 +490,7 @@ const Index = () => {
               currentRoom={currentVoiceRoom}
               currentUserId={chatUserId}
               onJoinRoom={joinVoiceRoom}
+              onRoomCreated={refetchVoiceRooms}
             />
           </div>
 

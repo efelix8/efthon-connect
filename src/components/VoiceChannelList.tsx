@@ -1,5 +1,17 @@
-import { Volume2, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff } from "lucide-react";
+import { useState } from "react";
+import { Volume2, Mic, MicOff, Headphones, HeadphoneOff, PhoneOff, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface VoiceRoom {
   id: string;
@@ -22,6 +34,7 @@ interface VoiceChannelListProps {
   currentRoom: VoiceRoom | null;
   currentUserId: string | null;
   onJoinRoom: (room: VoiceRoom) => void;
+  onRoomCreated?: () => void;
 }
 
 export const VoiceChannelList = ({
@@ -30,7 +43,45 @@ export const VoiceChannelList = ({
   currentRoom,
   currentUserId,
   onJoinRoom,
+  onRoomCreated,
 }: VoiceChannelListProps) => {
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  const handleCreate = async () => {
+    if (!name.trim()) return;
+
+    setCreating(true);
+    try {
+      const slug = name
+        .toLowerCase()
+        .replace(/\s+/g, "-")
+        .replace(/[^a-z0-9-]/g, "");
+
+      const { error } = await supabase.from("voice_rooms").insert({
+        name: name.trim(),
+        slug,
+      });
+
+      if (error) throw error;
+
+      toast({ title: "Başarılı", description: "Ses kanalı oluşturuldu." });
+      setName("");
+      setOpen(false);
+      onRoomCreated?.();
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: error.message || "Ses kanalı oluşturulamadı.",
+      });
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="space-y-1">
       <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground px-2 mb-2">
@@ -92,6 +143,34 @@ export const VoiceChannelList = ({
           </div>
         );
       })}
+
+      {/* Create Voice Channel Button */}
+      <div className="mt-2 px-2">
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground">
+              <Plus className="h-4 w-4" />
+              Ses Kanalı Oluştur
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Yeni Ses Kanalı</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 pt-4">
+              <Input
+                placeholder="Kanal adı"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={creating}
+              />
+              <Button onClick={handleCreate} disabled={creating || !name.trim()} className="w-full">
+                {creating ? "Oluşturuluyor..." : "Oluştur"}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   );
 };
