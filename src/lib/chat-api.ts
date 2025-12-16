@@ -93,9 +93,10 @@ export const fetchRooms = async (accessToken: string): Promise<Room[]> => {
 export const fetchMessages = async (
   accessToken: string,
   roomSlug: string,
+  limit: number = 30,
 ): Promise<MessagesResponse> => {
   if (!accessToken) throw new Error("Oturum bulunamadı");
-  const params = new URLSearchParams({ room: roomSlug, limit: "50" });
+  const params = new URLSearchParams({ room: roomSlug, limit: String(limit) });
   return authorizedGet<MessagesResponse>(`/messages?${params.toString()}`, accessToken);
 };
 
