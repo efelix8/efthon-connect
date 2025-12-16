@@ -60,7 +60,7 @@ export const SiteGate = ({ children }: SiteGateProps) => {
         alt=""
         className="absolute inset-0 m-auto h-[70%] w-[70%] object-contain opacity-10 pointer-events-none"
       />
-      <Card className="relative z-10 w-full max-w-sm border-border bg-card shadow-sm">
+      <Card className="relative z-10 w-full max-w-sm border-border bg-card shadow-lg shadow-black/5">
         <CardHeader className="space-y-2 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Lock className="h-6 w-6 text-primary" />
