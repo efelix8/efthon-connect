@@ -133,7 +133,7 @@ const Index = () => {
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Realtime subscription for new messages
+  // Realtime subscription for new messages - direct cache update instead of refetch
   useEffect(() => {
     if (!messagesResponse?.room?.id) return;
 
@@ -142,14 +142,98 @@ const Index = () => {
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'INSERT',
           schema: 'public',
           table: 'messages',
           filter: `room_id=eq.${messagesResponse.room.id}`,
         },
-        () => {
-          // Refetch messages when any change happens
-          queryClient.invalidateQueries({ queryKey: ["messages", activeRoomSlug] });
+        async (payload) => {
+          const newMessage = payload.new as any;
+          // Fetch user info for the new message
+          const { data: userData } = await supabase
+            .from('users_public')
+            .select('id, nickname')
+            .eq('id', newMessage.user_id)
+            .maybeSingle();
+          
+          const formattedMessage: ChatMessage = {
+            id: newMessage.id,
+            content: newMessage.content,
+            imageUrl: newMessage.image_url,
+            createdAt: newMessage.created_at,
+            editedAt: newMessage.edited_at,
+            roomId: newMessage.room_id,
+            user: userData ? { id: userData.id, nickname: userData.nickname } : null,
+          };
+          
+          // Update cache directly
+          queryClient.setQueryData(
+            ["messages", activeRoomSlug],
+            (old: any) => {
+              if (!old) return old;
+              // Check if message already exists
+              if (old.messages.some((m: ChatMessage) => m.id === formattedMessage.id)) {
+                return old;
+              }
+              return {
+                ...old,
+                messages: [...old.messages, formattedMessage],
+              };
+            }
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${messagesResponse.room.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          queryClient.setQueryData(
+            ["messages", activeRoomSlug],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                messages: old.messages.map((m: ChatMessage) =>
+                  m.id === updated.id
+                    ? {
+                        ...m,
+                        content: updated.content,
+                        editedAt: updated.edited_at,
+                        imageUrl: updated.image_url,
+                      }
+                    : m
+                ),
+              };
+            }
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'DELETE',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${messagesResponse.room.id}`,
+        },
+        (payload) => {
+          const deleted = payload.old as any;
+          queryClient.setQueryData(
+            ["messages", activeRoomSlug],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                messages: old.messages.filter((m: ChatMessage) => m.id !== deleted.id),
+              };
+            }
+          );
         }
       )
       .subscribe();
@@ -171,14 +255,64 @@ const Index = () => {
       if (!activeRoomSlug) throw new Error("Oda seçili değil");
       return sendMessage(activeRoomSlug, message, imageUrl || uploadedFile?.url || undefined);
     },
-    onSuccess: () => {
+    onMutate: async (imageUrl?: string) => {
+      // Optimistic update - add message immediately
+      const optimisticMessage: ChatMessage = {
+        id: `temp-${Date.now()}`,
+        content: message,
+        imageUrl: imageUrl || uploadedFile?.url || null,
+        createdAt: new Date().toISOString(),
+        editedAt: null,
+        roomId: messagesResponse?.room?.id ?? "",
+        user: chatUserId ? { id: chatUserId, nickname: user?.user_metadata?.nickname || "Sen" } : null,
+      };
+      
+      queryClient.setQueryData(
+        ["messages", activeRoomSlug],
+        (old: any) => {
+          if (!old) return old;
+          return {
+            ...old,
+            messages: [...old.messages, optimisticMessage],
+          };
+        }
+      );
+      
+      return { optimisticId: optimisticMessage.id };
+    },
+    onSuccess: (newMessage, _, context) => {
       setMessage("");
       setUploadedFile(null);
-      if (activeRoomSlug) {
-        queryClient.invalidateQueries({ queryKey: ["messages", activeRoomSlug] });
+      // Replace optimistic message with real one
+      if (context?.optimisticId) {
+        queryClient.setQueryData(
+          ["messages", activeRoomSlug],
+          (old: any) => {
+            if (!old) return old;
+            return {
+              ...old,
+              messages: old.messages.map((m: ChatMessage) =>
+                m.id === context.optimisticId ? newMessage : m
+              ),
+            };
+          }
+        );
       }
     },
-    onError: (error: any) => {
+    onError: (error: any, _, context) => {
+      // Remove optimistic message on error
+      if (context?.optimisticId) {
+        queryClient.setQueryData(
+          ["messages", activeRoomSlug],
+          (old: any) => {
+            if (!old) return old;
+            return {
+              ...old,
+              messages: old.messages.filter((m: ChatMessage) => m.id !== context.optimisticId),
+            };
+          }
+        );
+      }
       const description =
         error?.message === "User mapping not found. Call /api/auth/nickname first."
           ? "Mesaj göndermeden önce lütfen takma adını kaydet."
