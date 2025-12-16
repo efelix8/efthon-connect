@@ -66,20 +66,20 @@ export const useVoiceChat = (userId: string | undefined) => {
   }, [userId]);
 
   // Fetch voice rooms
-  useEffect(() => {
-    const fetchRooms = async () => {
-      const { data, error } = await supabase
-        .from("voice_rooms")
-        .select("*")
-        .order("created_at", { ascending: true });
+  const fetchRooms = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("voice_rooms")
+      .select("*")
+      .order("created_at", { ascending: true });
 
-      if (!error && data) {
-        setVoiceRooms(data);
-      }
-    };
-
-    fetchRooms();
+    if (!error && data) {
+      setVoiceRooms(data);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchRooms();
+  }, [fetchRooms]);
 
   // Subscribe to participants changes
   useEffect(() => {
@@ -462,5 +462,6 @@ export const useVoiceChat = (userId: string | undefined) => {
     leaveRoom,
     toggleMute,
     toggleDeafen,
+    refetchRooms: fetchRooms,
   };
 };
