@@ -113,6 +113,7 @@ export type Database = {
           id: string
           is_default: boolean
           name: string
+          password_hash: string | null
           slug: string
         }
         Insert: {
@@ -121,6 +122,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name: string
+          password_hash?: string | null
           slug: string
         }
         Update: {
@@ -129,6 +131,7 @@ export type Database = {
           id?: string
           is_default?: boolean
           name?: string
+          password_hash?: string | null
           slug?: string
         }
         Relationships: [
@@ -222,7 +225,10 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      verify_room_password: {
+        Args: { entered_password: string; room_slug: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
