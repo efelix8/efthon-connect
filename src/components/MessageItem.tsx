@@ -12,6 +12,8 @@ interface MessageItemProps {
   message: ChatMessage;
   isOwn: boolean;
   activeRoomSlug: string;
+  isFirstInGroup?: boolean;
+  isLastInGroup?: boolean;
 }
 
 const isPdfUrl = (url: string | null | undefined): boolean => {
@@ -19,12 +21,14 @@ const isPdfUrl = (url: string | null | undefined): boolean => {
   return url.toLowerCase().endsWith(".pdf");
 };
 
-const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
+const MessageItem = ({ message, isOwn, activeRoomSlug, isFirstInGroup = true, isLastInGroup = true }: MessageItemProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(message.content);
   const [imageExpanded, setImageExpanded] = useState(false);
+  
+  const showHeader = isFirstInGroup;
 
   const editMutation = useMutation({
     mutationFn: () => editMessage(message.id, editContent),
@@ -73,56 +77,43 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
   const isPdf = isPdfUrl(message.imageUrl);
 
   return (
-    <div className="group space-y-1 rounded-md bg-card/60 p-3 text-sm shadow-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{message.user?.nickname ?? "Bilinmeyen"}</span>
-          {message.editedAt && (
-            <span className="text-[10px] text-muted-foreground">(düzenlendi)</span>
-          )}
+    <div className={cn(
+      "group text-sm",
+      isFirstInGroup ? "rounded-t-md bg-card/60 pt-3 px-3 shadow-sm" : "bg-card/60 px-3",
+      isLastInGroup ? "rounded-b-md pb-3" : "pb-1",
+      !isFirstInGroup && !isLastInGroup && "bg-card/60 px-3 py-1"
+    )}>
+      {showHeader && (
+        <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center gap-2">
+            <span className="font-medium">{message.user?.nickname ?? "Bilinmeyen"}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            {isOwn && !isEditing && (
+              <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={() => setIsEditing(true)}
+                  disabled={editMutation.isPending || deleteMutation.isPending}
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:text-destructive"
+                  onClick={() => deleteMutation.mutate()}
+                  disabled={editMutation.isPending || deleteMutation.isPending}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="text-[10px] text-muted-foreground">
-            {new Date(message.createdAt).toLocaleTimeString("tr-TR", {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-          {isOwn && (
-            <span className="ml-0.5" title={message.readCount && message.readCount > 0 ? `${message.readCount} kişi okudu` : message.deliveredAt ? "İletildi" : "Gönderildi"}>
-              {message.readCount && message.readCount > 0 ? (
-                <CheckCheck className="h-3.5 w-3.5 text-primary" />
-              ) : message.deliveredAt ? (
-                <CheckCheck className="h-3.5 w-3.5 text-muted-foreground" />
-              ) : (
-                <Check className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-            </span>
-          )}
-          {isOwn && !isEditing && (
-            <div className="ml-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6"
-                onClick={() => setIsEditing(true)}
-                disabled={editMutation.isPending || deleteMutation.isPending}
-              >
-                <Pencil className="h-3 w-3" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 text-destructive hover:text-destructive"
-                onClick={() => deleteMutation.mutate()}
-                disabled={editMutation.isPending || deleteMutation.isPending}
-              >
-                <Trash2 className="h-3 w-3" />
-              </Button>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
       
       {isEditing ? (
         <div className="flex gap-2">
@@ -152,10 +143,36 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
           </Button>
         </div>
       ) : (
-        <div className="space-y-2">
-          {message.content && (
-            <p className="text-sm leading-snug text-foreground">{message.content}</p>
-          )}
+        <div className="space-y-1">
+          <div className="flex items-end gap-2">
+            <div className="flex-1">
+              {message.content && (
+                <p className="text-sm leading-snug text-foreground">{message.content}</p>
+              )}
+              {message.editedAt && (
+                <span className="text-[10px] text-muted-foreground">(düzenlendi)</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              <span className="text-[10px] text-muted-foreground">
+                {new Date(message.createdAt).toLocaleTimeString("tr-TR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+              {isOwn && (
+                <span className="ml-0.5" title={message.readCount && message.readCount > 0 ? `${message.readCount} kişi okudu` : message.deliveredAt ? "İletildi" : "Gönderildi"}>
+                  {message.readCount && message.readCount > 0 ? (
+                    <CheckCheck className="h-3.5 w-3.5 text-primary" />
+                  ) : message.deliveredAt ? (
+                    <CheckCheck className="h-3.5 w-3.5 text-muted-foreground" />
+                  ) : (
+                    <Check className="h-3.5 w-3.5 text-muted-foreground" />
+                  )}
+                </span>
+              )}
+            </div>
+          </div>
           {message.imageUrl && (
             isPdf ? (
               <a
