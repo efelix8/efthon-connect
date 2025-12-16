@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import siteGateBg from "@/assets/site-gate-bg.png";
 
 const STORAGE_KEY = "site_access_verified";
 
@@ -53,8 +54,13 @@ export const SiteGate = ({ children }: SiteGateProps) => {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
-      <Card className="w-full max-w-sm border-border bg-card shadow-sm">
+    <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
+      <img
+        src={siteGateBg}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover opacity-10 pointer-events-none"
+      />
+      <Card className="relative z-10 w-full max-w-sm border-border bg-card shadow-sm">
         <CardHeader className="space-y-2 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Lock className="h-6 w-6 text-primary" />
