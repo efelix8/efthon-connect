@@ -84,8 +84,8 @@ async function handleGet(req: Request): Promise<Response> {
   let query = supabase
     .from("messages")
     .select(
-      `id, content, image_url, created_at, edited_at, room_id,
-       user:users ( id, nickname )`
+      `id, content, image_url, created_at, edited_at, room_id, delivered_at,
+       user:users_public ( id, nickname )`
     )
     .eq("room_id", room.id)
     .order("created_at", { ascending: false })
@@ -102,6 +102,18 @@ async function handleGet(req: Request): Promise<Response> {
     return jsonResponse({ error: "Failed to fetch messages" }, { status: 500 });
   }
 
+  // Get read counts for all messages
+  const messageIds = (data ?? []).map((m: any) => m.id);
+  const { data: readCounts } = await supabase
+    .from("message_reads")
+    .select("message_id")
+    .in("message_id", messageIds);
+
+  const readCountMap = new Map<string, number>();
+  (readCounts ?? []).forEach((r: any) => {
+    readCountMap.set(r.message_id, (readCountMap.get(r.message_id) || 0) + 1);
+  });
+
   const messages = (data ?? []).map((m: any) => ({
     id: m.id,
     content: m.content,
@@ -109,6 +121,8 @@ async function handleGet(req: Request): Promise<Response> {
     createdAt: m.created_at,
     editedAt: m.edited_at,
     roomId: m.room_id,
+    deliveredAt: m.delivered_at,
+    readCount: readCountMap.get(m.id) || 0,
     user: m.user,
   }));
 
@@ -211,7 +225,7 @@ async function handlePost(req: Request): Promise<Response> {
       content: content || "",
       image_url: imageUrl,
     })
-    .select("id, content, image_url, created_at, edited_at, room_id")
+    .select("id, content, image_url, created_at, edited_at, room_id, delivered_at")
     .single();
 
   if (insertError) {
@@ -226,6 +240,8 @@ async function handlePost(req: Request): Promise<Response> {
     createdAt: inserted.created_at,
     editedAt: inserted.edited_at,
     roomId: inserted.room_id,
+    deliveredAt: inserted.delivered_at,
+    readCount: 0,
     user: chatUser,
   };
 

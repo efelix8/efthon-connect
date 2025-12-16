@@ -24,8 +24,20 @@ export interface ChatMessage {
   createdAt: string;
   editedAt: string | null;
   roomId: string;
-  user: ChatUser;
+  user: ChatUser | null;
+  deliveredAt?: string | null;
+  readCount?: number;
 }
+
+export const markMessageAsRead = async (messageId: string, userId: string): Promise<void> => {
+  const { error } = await supabase
+    .from('message_reads')
+    .upsert({ message_id: messageId, user_id: userId }, { onConflict: 'message_id,user_id' });
+  
+  if (error) {
+    console.error('Error marking message as read:', error);
+  }
+};
 
 interface RoomsResponse {
   rooms: Room[];
