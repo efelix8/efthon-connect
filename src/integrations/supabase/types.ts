@@ -14,11 +14,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      message_reads: {
+        Row: {
+          id: string
+          message_id: string
+          read_at: string
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          message_id: string
+          read_at?: string
+          user_id: string
+        }
+        Update: {
+          id?: string
+          message_id?: string
+          read_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_reads_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
           created_at: string
           deleted_at: string | null
+          delivered_at: string | null
           edited_at: string | null
           id: string
           image_url: string | null
@@ -30,6 +74,7 @@ export type Database = {
           content: string
           created_at?: string
           deleted_at?: string | null
+          delivered_at?: string | null
           edited_at?: string | null
           id?: string
           image_url?: string | null
@@ -41,6 +86,7 @@ export type Database = {
           content?: string
           created_at?: string
           deleted_at?: string | null
+          delivered_at?: string | null
           edited_at?: string | null
           id?: string
           image_url?: string | null

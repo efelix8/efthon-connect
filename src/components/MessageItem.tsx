@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Pencil, Trash2, X, Check, FileText, ExternalLink, Download, ImageOff } from "lucide-react";
+import { Pencil, Trash2, X, Check, FileText, ExternalLink, Download, ImageOff, CheckCheck } from "lucide-react";
 
 import { editMessage, deleteMessage, removeMessageImage, type ChatMessage } from "@/lib/chat-api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 
 interface MessageItemProps {
   message: ChatMessage;
@@ -87,6 +88,17 @@ const MessageItem = ({ message, isOwn, activeRoomSlug }: MessageItemProps) => {
               minute: "2-digit",
             })}
           </span>
+          {isOwn && (
+            <span className="ml-0.5" title={message.readCount && message.readCount > 0 ? `${message.readCount} kişi okudu` : message.deliveredAt ? "İletildi" : "Gönderildi"}>
+              {message.readCount && message.readCount > 0 ? (
+                <CheckCheck className="h-3.5 w-3.5 text-primary" />
+              ) : message.deliveredAt ? (
+                <CheckCheck className="h-3.5 w-3.5 text-muted-foreground" />
+              ) : (
+                <Check className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+            </span>
+          )}
           {isOwn && !isEditing && (
             <div className="ml-2 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
               <Button

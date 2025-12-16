@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { usePresence } from "@/hooks/use-presence";
 import { useVideoCall } from "@/hooks/use-video-call";
-import { fetchRooms, fetchMessages, sendMessage, type Room, type ChatMessage } from "@/lib/chat-api";
+import { fetchRooms, fetchMessages, sendMessage, markMessageAsRead, type Room, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -163,6 +163,8 @@ const Index = () => {
             createdAt: newMessage.created_at,
             editedAt: newMessage.edited_at,
             roomId: newMessage.room_id,
+            deliveredAt: newMessage.delivered_at,
+            readCount: 0,
             user: userData ? { id: userData.id, nickname: userData.nickname } : null,
           };
           
@@ -206,7 +208,33 @@ const Index = () => {
                         content: updated.content,
                         editedAt: updated.edited_at,
                         imageUrl: updated.image_url,
+                        deliveredAt: updated.delivered_at || m.deliveredAt,
                       }
+                    : m
+                ),
+              };
+            }
+          );
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'message_reads',
+        },
+        (payload) => {
+          const read = payload.new as any;
+          queryClient.setQueryData(
+            ["messages", activeRoomSlug],
+            (old: any) => {
+              if (!old) return old;
+              return {
+                ...old,
+                messages: old.messages.map((m: ChatMessage) =>
+                  m.id === read.message_id
+                    ? { ...m, readCount: (m.readCount || 0) + 1 }
                     : m
                 ),
               };
@@ -248,7 +276,58 @@ const Index = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  
+  // Mark messages as read when viewing
+  useEffect(() => {
+    if (!chatUserId || messages.length === 0) return;
+    
+    // Mark all messages from other users as read
+    const unreadMessages = messages.filter(
+      (m) => m.user?.id !== chatUserId && !m.id.startsWith('temp-')
+    );
+    
+    unreadMessages.forEach((msg) => {
+      markMessageAsRead(msg.id, chatUserId);
+    });
+  }, [messages, chatUserId]);
+
+  // Mark messages as delivered when received via realtime
+  useEffect(() => {
+    if (!messagesResponse?.room?.id) return;
+
+    const markDelivered = async (messageId: string) => {
+      await supabase
+        .from('messages')
+        .update({ delivered_at: new Date().toISOString() })
+        .eq('id', messageId)
+        .is('delivered_at', null);
+    };
+
+    // Listen for new messages and mark them as delivered
+    const deliveryChannel = supabase
+      .channel(`delivery-${messagesResponse.room.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `room_id=eq.${messagesResponse.room.id}`,
+        },
+        (payload) => {
+          const newMessage = payload.new as any;
+          // Mark as delivered if not our own message
+          if (chatUserId && newMessage.user_id !== chatUserId) {
+            markDelivered(newMessage.id);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(deliveryChannel);
+    };
+  }, [messagesResponse?.room?.id, chatUserId]);
+
 
   const sendMessageMutation = useMutation({
     mutationFn: (imageUrl?: string) => {
