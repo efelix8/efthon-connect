@@ -325,9 +325,24 @@ export const askAISinan = async (
 // Check if message triggers AI Sinan
 export const shouldTriggerAISinan = (content: string): boolean => {
   const lowerContent = content.toLowerCase().trim();
-  return lowerContent.includes('hey sinan') || 
-         lowerContent.includes('selam sinan') ||
-         lowerContent.includes('sinan yardım') ||
-         lowerContent.startsWith('sinan,') ||
-         lowerContent.startsWith('sinan ');
+  const triggers = [
+    'hey sinan', 'selam sinan', 'sinan yardım', 'yo sinan', 'abi sinan',
+    'sinan abi', 'sinan kardeş', 'sinan bey', 'sinan hoca', 'lan sinan',
+    'be sinan', 'ulan sinan', 'sinan reis', 'reis sinan', 'sinan naber',
+    'naber sinan', 'sinan gel', 'sinan bak', 'sinan dinle', 'sinan yardım et',
+    'sinan ne diyon', 'sinan napıyon', 'sinan sen', 'sinan bir', 'sinan bi',
+    '@sinan', 'sinan?', 'sinan!', 'sinancım', 'sinanım'
+  ];
+  
+  // Check if message contains any trigger
+  if (triggers.some(trigger => lowerContent.includes(trigger))) {
+    return true;
+  }
+  
+  // Check if message starts with sinan
+  if (lowerContent.startsWith('sinan,') || lowerContent.startsWith('sinan ')) {
+    return true;
+  }
+  
+  return false;
 };
