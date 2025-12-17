@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Lock, Hash, Video } from "lucide-react";
+import { Users, Lock, Hash, Video, Pencil } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +16,7 @@ import { Separator } from "@/components/ui/separator";
 import MessageItem from "@/components/MessageItem";
 import CreateRoomDialog from "@/components/CreateRoomDialog";
 import FileUpload from "@/components/ImageUpload";
+import { DrawingCanvas } from "@/components/DrawingCanvas";
 import StickerPicker from "@/components/StickerPicker";
 import { RoomPasswordDialog } from "@/components/RoomPasswordDialog";
 import { VideoCall } from "@/components/VideoCall";
@@ -38,6 +39,7 @@ const Index = () => {
     open: false,
     room: null,
   });
+  const [drawingOpen, setDrawingOpen] = useState(false);
   
   const { activeUsers } = usePresence(user?.id);
 
@@ -584,6 +586,16 @@ const Index = () => {
                     disabled={sendMessageMutation.isPending}
                   />
                 )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setDrawingOpen(true)}
+                  disabled={sendMessageMutation.isPending}
+                  title="Çizim yap"
+                >
+                  <Pencil className="h-5 w-5" />
+                </Button>
                 <StickerPicker
                   onStickerSelect={(sticker) => setMessage((prev) => prev + sticker)}
                   onImageStickerSelect={handleImageStickerSelect}
@@ -595,7 +607,17 @@ const Index = () => {
                   placeholder="Mesajını yaz..."
                   disabled={sendMessageMutation.isPending}
                   className="flex-1"
-                />
+      />
+
+      {user?.id && (
+        <DrawingCanvas
+          open={drawingOpen}
+          onOpenChange={setDrawingOpen}
+          userId={user.id}
+          onImageSend={handleImageStickerSelect}
+          disabled={sendMessageMutation.isPending}
+        />
+      )}
                 <Button 
                   type="submit" 
                   disabled={sendMessageMutation.isPending || (!message.trim() && !uploadedFile)}
