@@ -664,6 +664,19 @@ const Index = () => {
           onToggleMute={toggleVideoMute}
           onToggleVideo={toggleVideo}
           onLeave={leaveCall}
+          messages={messages.map(m => ({
+            id: m.id,
+            content: m.content,
+            imageUrl: m.imageUrl,
+            createdAt: m.createdAt,
+            user: m.user,
+          }))}
+          currentUserId={chatUserId}
+          onSendMessage={(content) => {
+            if (!activeRoomSlug) return;
+            sendMessage(activeRoomSlug, content);
+          }}
+          isSendingMessage={sendMessageMutation.isPending}
         />
       )}
     </>
