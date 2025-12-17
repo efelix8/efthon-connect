@@ -528,21 +528,9 @@ const Index = () => {
               </h1>
               <p className="text-xs text-muted-foreground">Gerçek zamanlı sınıf sohbeti</p>
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={joinCall}
-                disabled={!activeRoomSlug}
-                className="gap-1.5"
-              >
-                <Video className="h-3.5 w-3.5" />
-                Aramaya Katıl
-              </Button>
-              <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1">
-                <Users className="h-3.5 w-3.5 text-primary" />
-                <span className="font-medium text-primary">{activeUsers} çevrimiçi</span>
-              </div>
+            <div className="flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-muted-foreground">
+              <Users className="h-3.5 w-3.5 text-primary" />
+              <span className="font-medium text-primary">{activeUsers} çevrimiçi</span>
             </div>
           </header>
 
@@ -586,6 +574,16 @@ const Index = () => {
                     disabled={sendMessageMutation.isPending}
                   />
                 )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={joinCall}
+                  disabled={!activeRoomSlug}
+                  title="Görüntülü aramaya katıl"
+                >
+                  <Video className="h-5 w-5" />
+                </Button>
                 <Button
                   type="button"
                   variant="ghost"
