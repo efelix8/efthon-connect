@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePresence } from "@/hooks/use-presence";
 import { useVideoCall } from "@/hooks/use-video-call";
 import { useVoiceChat } from "@/hooks/use-voice-chat";
-import { fetchRooms, fetchMessages, sendMessage, markMessageAsRead, type Room, type ChatMessage } from "@/lib/chat-api";
+import { fetchRooms, fetchMessages, sendMessage, markMessageAsRead, askAISinan, shouldTriggerAISinan, type Room, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -203,6 +203,25 @@ const Index = () => {
               };
             }
           );
+
+          // Check if message triggers AI Sinan (only for messages from other users)
+          if (newMessage.user_id !== chatUserId && shouldTriggerAISinan(newMessage.content)) {
+            try {
+              // Get recent messages for context
+              const currentMessages = queryClient.getQueryData(["messages", activeRoomSlug]) as any;
+              const recentMessages = (currentMessages?.messages || []).slice(-10).map((m: ChatMessage) => ({
+                content: m.content,
+                isAI: m.user?.nickname === '🤖 Sinan AI',
+              }));
+
+              const aiResponse = await askAISinan(newMessage.content, recentMessages);
+              
+              // Send AI response as a message
+              await sendMessage(activeRoomSlug!, `🤖 **Sinan AI:** ${aiResponse}`);
+            } catch (error) {
+              console.error('AI Sinan error:', error);
+            }
+          }
         }
       )
       .on(

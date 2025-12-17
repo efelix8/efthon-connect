@@ -2,3 +2,6 @@ project_id = "uobglgbzfzlnmdapirtz"
 
 [functions.verify-site-password]
 verify_jwt = false
+
+[functions.ai-sinan]
+verify_jwt = false

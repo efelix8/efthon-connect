@@ -291,3 +291,43 @@ export const uploadChatFile = async (file: File, userId: string): Promise<string
 
 // Backwards compatibility alias
 export const uploadChatImage = uploadChatFile;
+
+// AI Sinan - responds when users say "hey sinan"
+export interface AISinanResponse {
+  response: string;
+  error?: string;
+}
+
+export const askAISinan = async (
+  userMessage: string,
+  conversationHistory: { content: string; isAI: boolean }[]
+): Promise<string> => {
+  const response = await fetch(`${FUNCTION_BASE}/ai-sinan`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      userMessage,
+      conversationHistory,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'AI yanıt veremedi');
+  }
+
+  const data: AISinanResponse = await response.json();
+  return data.response;
+};
+
+// Check if message triggers AI Sinan
+export const shouldTriggerAISinan = (content: string): boolean => {
+  const lowerContent = content.toLowerCase().trim();
+  return lowerContent.includes('hey sinan') || 
+         lowerContent.includes('selam sinan') ||
+         lowerContent.includes('sinan yardım') ||
+         lowerContent.startsWith('sinan,') ||
+         lowerContent.startsWith('sinan ');
+};
