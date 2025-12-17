@@ -211,13 +211,13 @@ const Index = () => {
               const currentMessages = queryClient.getQueryData(["messages", activeRoomSlug]) as any;
               const recentMessages = (currentMessages?.messages || []).slice(-10).map((m: ChatMessage) => ({
                 content: m.content,
-                isAI: m.user?.nickname === '🤖 Sinan AI',
+                isAI: m.content.startsWith('**Sinan Gür:**'),
               }));
 
               const aiResponse = await askAISinan(newMessage.content, recentMessages);
               
-              // Send AI response as a message
-              await sendMessage(activeRoomSlug!, `🤖 **Sinan AI:** ${aiResponse}`);
+              // Send AI response as a message with Sinan Gür name
+              await sendMessage(activeRoomSlug!, `**Sinan Gür:** ${aiResponse}`);
             } catch (error) {
               console.error('AI Sinan error:', error);
             }
