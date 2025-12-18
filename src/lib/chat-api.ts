@@ -93,7 +93,7 @@ export const fetchRooms = async (accessToken: string): Promise<Room[]> => {
 export const fetchMessages = async (
   accessToken: string,
   roomSlug: string,
-  limit: number = 30,
+  limit: number = 100,
 ): Promise<MessagesResponse> => {
   if (!accessToken) throw new Error("Oturum bulunamadı");
 
