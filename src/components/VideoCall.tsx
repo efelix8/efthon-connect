@@ -2,7 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Mic, MicOff, Video, VideoOff, PhoneOff, Users, Maximize2, Minimize2, Wifi, Globe, Server, MessageSquare, X, Send } from "lucide-react";
+import { 
+  Mic, MicOff, Video, VideoOff, PhoneOff, Users, Maximize2, Minimize2, 
+  Wifi, Globe, Server, MessageSquare, X, Send, Monitor, MonitorOff,
+  Signal, SignalHigh, SignalLow, SignalMedium, Loader2
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ConnectionType } from "@/hooks/use-video-call";
 
@@ -18,19 +22,27 @@ interface Peer {
   id: string;
   stream?: MediaStream;
   connectionType?: ConnectionType;
+  nickname?: string;
 }
 
 interface VideoCallProps {
   localStream: MediaStream | null;
+  screenStream?: MediaStream | null;
+  isScreenSharing?: boolean;
   peers: Map<string, Peer>;
   isMuted: boolean;
   isVideoOff: boolean;
+  connectionQuality?: "excellent" | "good" | "poor" | "unknown";
+  isReconnecting?: boolean;
   onToggleMute: () => void;
   onToggleVideo: () => void;
   onLeave: () => void;
+  onStartScreenShare?: () => void;
+  onStopScreenShare?: () => void;
   // Chat props
   messages?: ChatMessage[];
   currentUserId?: string | null;
+  currentUserNickname?: string;
   onSendMessage?: (content: string) => void;
   isSendingMessage?: boolean;
 }
@@ -53,12 +65,30 @@ const ConnectionBadge = ({ type }: { type?: ConnectionType }) => {
   );
 };
 
+const QualityIndicator = ({ quality }: { quality?: "excellent" | "good" | "poor" | "unknown" }) => {
+  const config = {
+    excellent: { icon: SignalHigh, label: "Mükemmel", color: "text-green-400" },
+    good: { icon: SignalMedium, label: "İyi", color: "text-yellow-400" },
+    poor: { icon: SignalLow, label: "Zayıf", color: "text-red-400" },
+    unknown: { icon: Signal, label: "Bağlanıyor", color: "text-white/40" },
+  };
+
+  const { icon: Icon, label, color } = config[quality || "unknown"];
+
+  return (
+    <div className="flex items-center gap-1.5" title={label}>
+      <Icon className={cn("h-4 w-4", color)} />
+    </div>
+  );
+};
+
 const VideoTile = ({ 
   stream, 
   label, 
   isMuted,
   isLocal = false,
   isLarge = false,
+  isScreenShare = false,
   connectionType,
 }: { 
   stream: MediaStream | null; 
@@ -66,6 +96,7 @@ const VideoTile = ({
   isMuted?: boolean;
   isLocal?: boolean;
   isLarge?: boolean;
+  isScreenShare?: boolean;
   connectionType?: ConnectionType;
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -102,7 +133,8 @@ const VideoTile = ({
         isLarge 
           ? "rounded-2xl shadow-2xl ring-1 ring-white/10" 
           : "rounded-xl shadow-lg ring-1 ring-white/5",
-        isLocal && !isLarge && "absolute bottom-24 right-6 w-40 h-28 z-10 hover:scale-105"
+        isLocal && !isLarge && "absolute bottom-24 right-6 w-48 h-36 z-10 hover:scale-105 cursor-move",
+        isScreenShare && "ring-2 ring-primary/50"
       )}
     >
       {/* Gradient background */}
@@ -116,7 +148,8 @@ const VideoTile = ({
           playsInline
           muted={isMuted}
           className={cn(
-            "absolute inset-0 w-full h-full object-cover z-10",
+            "absolute inset-0 w-full h-full z-10",
+            isScreenShare ? "object-contain bg-black" : "object-cover",
             !hasVideo && "hidden"
           )}
         />
@@ -150,6 +183,14 @@ const VideoTile = ({
         </div>
       )}
 
+      {/* Screen share indicator */}
+      {isScreenShare && (
+        <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-primary/80 backdrop-blur-sm px-2 py-1 rounded-full">
+          <Monitor className="h-3 w-3 text-white" />
+          <span className="text-[10px] font-medium text-white">Ekran Paylaşımı</span>
+        </div>
+      )}
+
       {/* Name badge */}
       <div className={cn(
         "absolute bottom-3 left-3 flex items-center gap-2",
@@ -179,20 +220,28 @@ const VideoTile = ({
 
 export const VideoCall = ({
   localStream,
+  screenStream,
+  isScreenSharing = false,
   peers,
   isMuted,
   isVideoOff,
+  connectionQuality = "unknown",
+  isReconnecting = false,
   onToggleMute,
   onToggleVideo,
   onLeave,
+  onStartScreenShare,
+  onStopScreenShare,
   messages = [],
   currentUserId,
+  currentUserNickname,
   onSendMessage,
   isSendingMessage = false,
 }: VideoCallProps) => {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [chatOpen, setChatOpen] = useState(true);
   const [chatMessage, setChatMessage] = useState("");
+  const [showParticipants, setShowParticipants] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const peerArray = Array.from(peers.values());
   const totalParticipants = peerArray.length + 1;
@@ -253,19 +302,39 @@ export const VideoCall = ({
         }}
       />
 
+      {/* Reconnecting overlay */}
+      {isReconnecting && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 text-white">
+            <Loader2 className="h-8 w-8 animate-spin" />
+            <span className="text-sm font-medium">Yeniden bağlanılıyor...</span>
+          </div>
+        </div>
+      )}
+
       {/* Main video area */}
       <div className={cn("relative flex-1 flex flex-col transition-all duration-300", chatOpen ? "mr-80" : "mr-0")}>
         {/* Header */}
         <header className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/5">
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 bg-white/5 backdrop-blur-sm px-3 py-1.5 rounded-full">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowParticipants(!showParticipants)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-full",
+                showParticipants ? "bg-white/10" : "bg-white/5",
+                "hover:bg-white/10"
+              )}
+            >
               <Users className="h-4 w-4 text-primary" />
               <span className="text-sm font-medium text-white">{totalParticipants} katılımcı</span>
-            </div>
+            </Button>
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
               <span className="text-xs text-white/60">Canlı</span>
             </div>
+            <QualityIndicator quality={connectionQuality} />
           </div>
           
           <div className="flex items-center gap-2">
@@ -291,6 +360,44 @@ export const VideoCall = ({
           </div>
         </header>
 
+        {/* Participants Panel */}
+        {showParticipants && (
+          <div className="absolute left-6 top-20 z-20 w-64 bg-slate-900/95 backdrop-blur-sm rounded-xl border border-white/10 shadow-xl">
+            <div className="p-3 border-b border-white/10">
+              <h4 className="text-sm font-medium text-white">Katılımcılar</h4>
+            </div>
+            <div className="p-2 max-h-64 overflow-y-auto">
+              {/* You */}
+              <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                  <span className="text-xs font-medium text-primary">
+                    {(currentUserNickname || "Sen").charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm text-white">{currentUserNickname || "Sen"}</p>
+                  <p className="text-xs text-white/40">Sen</p>
+                </div>
+                {isMuted && <MicOff className="h-4 w-4 text-red-400" />}
+              </div>
+              {/* Other participants */}
+              {peerArray.map((peer) => (
+                <div key={peer.id} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5">
+                  <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                    <span className="text-xs font-medium text-white">
+                      {(peer.nickname || peer.id.slice(0, 2)).charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-white">{peer.nickname || `Kullanıcı ${peer.id.slice(0, 4)}`}</p>
+                    <p className="text-xs text-white/40">{peer.connectionType || "Bağlanıyor"}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Video Grid */}
         <div className="relative flex-1 p-6 overflow-hidden">
           {hasMultipleParticipants ? (
@@ -301,7 +408,7 @@ export const VideoCall = ({
                   <VideoTile
                     key={peer.id}
                     stream={peer.stream || null}
-                    label={`Kullanıcı ${peer.id.slice(0, 4)}`}
+                    label={peer.nickname || `Kullanıcı ${peer.id.slice(0, 4)}`}
                     isLarge
                     connectionType={peer.connectionType}
                   />
@@ -310,20 +417,22 @@ export const VideoCall = ({
               
               {/* Local video as floating PiP */}
               <VideoTile 
-                stream={localStream} 
-                label="Sen" 
+                stream={isScreenSharing ? screenStream : localStream} 
+                label={currentUserNickname || "Sen"} 
                 isMuted 
                 isLocal
+                isScreenShare={isScreenSharing}
               />
             </>
           ) : (
             /* Single participant - show local video large */
             <div className={cn("grid gap-4 h-full", getGridCols())}>
               <VideoTile 
-                stream={localStream} 
-                label="Sen" 
+                stream={isScreenSharing ? screenStream : localStream} 
+                label={currentUserNickname || "Sen"} 
                 isMuted 
                 isLarge
+                isScreenShare={isScreenSharing}
               />
             </div>
           )}
@@ -338,14 +447,15 @@ export const VideoCall = ({
               size="lg"
               onClick={onToggleMute}
               className={cn(
-                "rounded-full w-16 h-16 transition-all duration-200",
+                "rounded-full w-14 h-14 transition-all duration-200",
                 "hover:scale-105 active:scale-95",
                 isMuted 
                   ? "bg-red-500/20 hover:bg-red-500/30 text-red-400 ring-2 ring-red-500/30" 
                   : "bg-white/10 hover:bg-white/20 text-white"
               )}
+              title={isMuted ? "Mikrofonu aç" : "Mikrofonu kapat"}
             >
-              {isMuted ? <MicOff className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
+              {isMuted ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
             </Button>
 
             {/* Video button */}
@@ -354,15 +464,35 @@ export const VideoCall = ({
               size="lg"
               onClick={onToggleVideo}
               className={cn(
-                "rounded-full w-16 h-16 transition-all duration-200",
+                "rounded-full w-14 h-14 transition-all duration-200",
                 "hover:scale-105 active:scale-95",
                 isVideoOff 
                   ? "bg-red-500/20 hover:bg-red-500/30 text-red-400 ring-2 ring-red-500/30" 
                   : "bg-white/10 hover:bg-white/20 text-white"
               )}
+              title={isVideoOff ? "Kamerayı aç" : "Kamerayı kapat"}
             >
-              {isVideoOff ? <VideoOff className="h-6 w-6" /> : <Video className="h-6 w-6" />}
+              {isVideoOff ? <VideoOff className="h-5 w-5" /> : <Video className="h-5 w-5" />}
             </Button>
+
+            {/* Screen share button */}
+            {onStartScreenShare && onStopScreenShare && (
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={isScreenSharing ? onStopScreenShare : onStartScreenShare}
+                className={cn(
+                  "rounded-full w-14 h-14 transition-all duration-200",
+                  "hover:scale-105 active:scale-95",
+                  isScreenSharing 
+                    ? "bg-primary/20 hover:bg-primary/30 text-primary ring-2 ring-primary/30" 
+                    : "bg-white/10 hover:bg-white/20 text-white"
+                )}
+                title={isScreenSharing ? "Ekran paylaşımını durdur" : "Ekran paylaş"}
+              >
+                {isScreenSharing ? <MonitorOff className="h-5 w-5" /> : <Monitor className="h-5 w-5" />}
+              </Button>
+            )}
 
             {/* Leave button */}
             <Button
@@ -370,13 +500,14 @@ export const VideoCall = ({
               size="lg"
               onClick={onLeave}
               className={cn(
-                "rounded-full w-16 h-16 transition-all duration-200",
+                "rounded-full w-14 h-14 transition-all duration-200",
                 "bg-red-500 hover:bg-red-600 text-white",
                 "hover:scale-105 active:scale-95",
                 "shadow-lg shadow-red-500/30"
               )}
+              title="Aramadan ayrıl"
             >
-              <PhoneOff className="h-6 w-6" />
+              <PhoneOff className="h-5 w-5" />
             </Button>
           </div>
 
@@ -416,7 +547,7 @@ export const VideoCall = ({
             {messages.map((msg) => {
               const isOwn = msg.user?.id === currentUserId;
               const isSinan = msg.content.startsWith('**Sinan Gür:**');
-              const displayName = isSinan ? 'Sinan Gür' : (isOwn ? 'Sen' : 'Bilinmeyen');
+              const displayName = isSinan ? 'Sinan Gür' : (isOwn ? 'Sen' : msg.user?.nickname || 'Bilinmeyen');
               const displayContent = isSinan ? msg.content.replace('**Sinan Gür:** ', '') : msg.content;
               
               return (

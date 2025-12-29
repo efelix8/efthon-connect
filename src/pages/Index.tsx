@@ -121,14 +121,20 @@ const Index = () => {
   const {
     isInCall,
     localStream,
+    screenStream,
+    isScreenSharing,
     peers,
     isMuted: videoMuted,
     isVideoOff,
+    connectionQuality,
+    isReconnecting,
     joinCall,
     leaveCall,
     toggleMute: toggleVideoMute,
     toggleVideo,
-  } = useVideoCall(activeRoomSlug ?? "", chatUserId ?? undefined);
+    startScreenShare,
+    stopScreenShare,
+  } = useVideoCall(activeRoomSlug ?? "", chatUserId ?? undefined, user?.user_metadata?.nickname);
 
   const {
     voiceRooms,
@@ -658,12 +664,18 @@ const Index = () => {
       {isInCall && (
         <VideoCall
           localStream={localStream}
+          screenStream={screenStream}
+          isScreenSharing={isScreenSharing}
           peers={peers}
           isMuted={videoMuted}
           isVideoOff={isVideoOff}
+          connectionQuality={connectionQuality}
+          isReconnecting={isReconnecting}
           onToggleMute={toggleVideoMute}
           onToggleVideo={toggleVideo}
           onLeave={leaveCall}
+          onStartScreenShare={startScreenShare}
+          onStopScreenShare={stopScreenShare}
           messages={messages.map(m => ({
             id: m.id,
             content: m.content,
@@ -672,6 +684,7 @@ const Index = () => {
             user: m.user,
           }))}
           currentUserId={chatUserId}
+          currentUserNickname={user?.user_metadata?.nickname}
           onSendMessage={(content) => {
             if (!activeRoomSlug) return;
             sendMessage(activeRoomSlug, content);
