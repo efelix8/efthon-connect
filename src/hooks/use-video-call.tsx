@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export type ConnectionType = "direct" | "stun" | "turn" | "unknown";
 
@@ -8,13 +9,15 @@ interface Peer {
   connection: RTCPeerConnection;
   stream?: MediaStream;
   connectionType?: ConnectionType;
+  nickname?: string;
 }
 
 interface SignalMessage {
-  type: "offer" | "answer" | "ice-candidate" | "join" | "leave";
+  type: "offer" | "answer" | "ice-candidate" | "join" | "leave" | "screen-share-start" | "screen-share-stop";
   from: string;
   to?: string;
   payload?: RTCSessionDescriptionInit | RTCIceCandidateInit;
+  nickname?: string;
 }
 
 const ICE_SERVERS: RTCConfiguration = {
@@ -44,17 +47,25 @@ const ICE_SERVERS: RTCConfiguration = {
   iceCandidatePoolSize: 10,
 };
 
-export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
+export const useVideoCall = (roomSlug: string, userId: string | undefined, userNickname?: string) => {
   const [isInCall, setIsInCall] = useState(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [peers, setPeers] = useState<Map<string, Peer>>(new Map());
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOff, setIsVideoOff] = useState(false);
+  const [connectionQuality, setConnectionQuality] = useState<"excellent" | "good" | "poor" | "unknown">("unknown");
+  const [isReconnecting, setIsReconnecting] = useState(false);
   
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
   const peersRef = useRef<Map<string, Peer>>(new Map());
   const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const userIdRef = useRef<string | undefined>(userId);
+  const userNicknameRef = useRef<string | undefined>(userNickname);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const statsIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Keep refs in sync
   useEffect(() => {
@@ -62,8 +73,38 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
   }, [localStream]);
 
   useEffect(() => {
+    screenStreamRef.current = screenStream;
+  }, [screenStream]);
+
+  useEffect(() => {
     userIdRef.current = userId;
   }, [userId]);
+
+  useEffect(() => {
+    userNicknameRef.current = userNickname;
+  }, [userNickname]);
+
+  // Monitor connection quality
+  const updateConnectionQuality = useCallback(() => {
+    peersRef.current.forEach((peer) => {
+      peer.connection.getStats().then((stats) => {
+        stats.forEach((report) => {
+          if (report.type === "candidate-pair" && report.state === "succeeded") {
+            const rtt = report.currentRoundTripTime;
+            if (rtt !== undefined) {
+              if (rtt < 0.1) {
+                setConnectionQuality("excellent");
+              } else if (rtt < 0.3) {
+                setConnectionQuality("good");
+              } else {
+                setConnectionQuality("poor");
+              }
+            }
+          }
+        });
+      });
+    });
+  }, []);
 
   const detectConnectionType = useCallback((pc: RTCPeerConnection, peerId: string) => {
     pc.getStats().then((stats) => {
@@ -136,9 +177,22 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
       if (pc.connectionState === "connected") {
         // Check connection type after connection is established
         setTimeout(() => detectConnectionType(pc, peerId), 1000);
+        toast.success(`${peerId.slice(0, 4)} bağlandı`);
       }
-      if (pc.connectionState === "failed" || pc.connectionState === "disconnected") {
-        removePeer(peerId);
+      if (pc.connectionState === "failed") {
+        toast.error(`${peerId.slice(0, 4)} ile bağlantı başarısız`);
+        // Try to reconnect
+        handleReconnect(peerId);
+      }
+      if (pc.connectionState === "disconnected") {
+        toast.warning(`${peerId.slice(0, 4)} bağlantısı kesildi`);
+        // Give it a moment to recover before removing
+        setTimeout(() => {
+          const currentPeer = peersRef.current.get(peerId);
+          if (currentPeer && currentPeer.connection.connectionState === "disconnected") {
+            removePeer(peerId);
+          }
+        }, 5000);
       }
     };
 
@@ -160,7 +214,41 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
       peer.connection.close();
       peersRef.current.delete(peerId);
       setPeers(new Map(peersRef.current));
+      toast.info(`${peerId.slice(0, 4)} ayrıldı`);
     }
+  }, []);
+
+  const handleReconnect = useCallback(async (peerId: string) => {
+    console.log(`Attempting to reconnect with ${peerId}`);
+    setIsReconnecting(true);
+    
+    // Remove old connection
+    const oldPeer = peersRef.current.get(peerId);
+    if (oldPeer) {
+      oldPeer.connection.close();
+      peersRef.current.delete(peerId);
+    }
+    
+    // Create new connection after a short delay
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+    
+    reconnectTimeoutRef.current = setTimeout(() => {
+      if (channelRef.current && userIdRef.current) {
+        // Re-announce presence to trigger new connection
+        channelRef.current.send({
+          type: "broadcast",
+          event: "signal",
+          payload: {
+            type: "join",
+            from: userIdRef.current,
+            nickname: userNicknameRef.current,
+          } as SignalMessage,
+        });
+      }
+      setIsReconnecting(false);
+    }, 2000);
   }, []);
 
   const handleSignal = useCallback(async (message: SignalMessage) => {
@@ -286,9 +374,19 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
 
     try {
       console.log("Joining call...");
+      toast.loading("Kamera ve mikrofon açılıyor...", { id: "join-call" });
+      
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true,
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
+        },
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
       });
       
       // Set both state and ref immediately
@@ -307,6 +405,7 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
         .subscribe(async (status) => {
           if (status === "SUBSCRIBED") {
             console.log("Subscribed to video call channel");
+            toast.success("Görüntülü aramaya katıldın!", { id: "join-call" });
             // Small delay to ensure everything is set up
             setTimeout(() => {
               channel.send({
@@ -315,20 +414,120 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
                 payload: {
                   type: "join",
                   from: userId,
+                  nickname: userNickname,
                 } as SignalMessage,
               });
             }, 100);
           }
         });
 
+      // Start connection quality monitoring
+      statsIntervalRef.current = setInterval(updateConnectionQuality, 5000);
+
       setIsInCall(true);
     } catch (error) {
       console.error("Error joining call:", error);
+      toast.error("Kamera veya mikrofon erişimi başarısız. Lütfen izinleri kontrol edin.", { id: "join-call" });
     }
-  }, [userId, roomSlug, handleSignal]);
+  }, [userId, roomSlug, handleSignal, userNickname, updateConnectionQuality]);
+
+  const startScreenShare = useCallback(async () => {
+    if (!channelRef.current || !userIdRef.current) return;
+
+    try {
+      toast.loading("Ekran paylaşımı başlatılıyor...", { id: "screen-share" });
+      
+      const screen = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 },
+        },
+        audio: true,
+      });
+
+      screenStreamRef.current = screen;
+      setScreenStream(screen);
+      setIsScreenSharing(true);
+
+      // Replace video track in all peer connections
+      const videoTrack = screen.getVideoTracks()[0];
+      
+      peersRef.current.forEach((peer) => {
+        const sender = peer.connection.getSenders().find(s => s.track?.kind === "video");
+        if (sender) {
+          sender.replaceTrack(videoTrack);
+        }
+      });
+
+      // Listen for screen share end
+      videoTrack.onended = () => {
+        stopScreenShare();
+      };
+
+      // Notify others
+      channelRef.current.send({
+        type: "broadcast",
+        event: "signal",
+        payload: {
+          type: "screen-share-start",
+          from: userIdRef.current,
+        } as SignalMessage,
+      });
+
+      toast.success("Ekran paylaşımı başlatıldı!", { id: "screen-share" });
+    } catch (error) {
+      console.error("Error starting screen share:", error);
+      toast.error("Ekran paylaşımı başlatılamadı.", { id: "screen-share" });
+    }
+  }, []);
+
+  const stopScreenShare = useCallback(() => {
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach(track => track.stop());
+      screenStreamRef.current = null;
+      setScreenStream(null);
+    }
+
+    // Replace with camera video track
+    if (localStreamRef.current) {
+      const videoTrack = localStreamRef.current.getVideoTracks()[0];
+      peersRef.current.forEach((peer) => {
+        const sender = peer.connection.getSenders().find(s => s.track?.kind === "video");
+        if (sender && videoTrack) {
+          sender.replaceTrack(videoTrack);
+        }
+      });
+    }
+
+    setIsScreenSharing(false);
+
+    if (channelRef.current && userIdRef.current) {
+      channelRef.current.send({
+        type: "broadcast",
+        event: "signal",
+        payload: {
+          type: "screen-share-stop",
+          from: userIdRef.current,
+        } as SignalMessage,
+      });
+    }
+
+    toast.info("Ekran paylaşımı durduruldu.");
+  }, []);
 
   const leaveCall = useCallback(() => {
     console.log("Leaving call...");
+
+    // Clear intervals
+    if (statsIntervalRef.current) {
+      clearInterval(statsIntervalRef.current);
+      statsIntervalRef.current = null;
+    }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
 
     // Notify others
     if (channelRef.current && userIdRef.current) {
@@ -356,6 +555,13 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
       setLocalStream(null);
     }
 
+    // Stop screen share
+    if (screenStreamRef.current) {
+      screenStreamRef.current.getTracks().forEach((track) => track.stop());
+      screenStreamRef.current = null;
+      setScreenStream(null);
+    }
+
     // Unsubscribe from channel
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
@@ -365,6 +571,11 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
     setIsInCall(false);
     setIsMuted(false);
     setIsVideoOff(false);
+    setIsScreenSharing(false);
+    setConnectionQuality("unknown");
+    setIsReconnecting(false);
+    
+    toast.info("Görüntülü aramadan ayrıldın.");
   }, []);
 
   const toggleMute = useCallback(() => {
@@ -388,8 +599,17 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      if (statsIntervalRef.current) {
+        clearInterval(statsIntervalRef.current);
+      }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
+      }
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach((track) => track.stop());
       }
       if (channelRef.current) {
         supabase.removeChannel(channelRef.current);
@@ -403,12 +623,18 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined) => {
   return {
     isInCall,
     localStream,
+    screenStream,
+    isScreenSharing,
     peers,
     isMuted,
     isVideoOff,
+    connectionQuality,
+    isReconnecting,
     joinCall,
     leaveCall,
     toggleMute,
     toggleVideo,
+    startScreenShare,
+    stopScreenShare,
   };
 };
