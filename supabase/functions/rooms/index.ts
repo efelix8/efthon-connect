@@ -175,6 +175,78 @@ async function handlePost(req: Request): Promise<Response> {
   return jsonResponse({ room: inserted }, { status: 201 });
 }
 
+async function handleDelete(req: Request): Promise<Response> {
+  const supabase = createSupabaseClient(req);
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    return jsonResponse({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const url = new URL(req.url);
+  const roomId = url.searchParams.get("id");
+
+  if (!roomId) {
+    return jsonResponse({ error: "Room ID is required" }, { status: 400 });
+  }
+
+  // Get chat user
+  const {
+    data: chatUser,
+    error: chatUserError,
+  } = await supabase
+    .from("users")
+    .select("id")
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
+
+  if (chatUserError || !chatUser) {
+    console.error("Error fetching chat user", chatUserError);
+    return jsonResponse({ error: "User not found" }, { status: 400 });
+  }
+
+  // Check if user is the creator
+  const { data: room, error: roomError } = await supabase
+    .from("rooms")
+    .select("id, created_by, is_default")
+    .eq("id", roomId)
+    .maybeSingle();
+
+  if (roomError || !room) {
+    console.error("Error fetching room", roomError);
+    return jsonResponse({ error: "Room not found" }, { status: 404 });
+  }
+
+  if (room.is_default) {
+    return jsonResponse({ error: "Default room cannot be deleted" }, { status: 400 });
+  }
+
+  if (room.created_by !== chatUser.id) {
+    return jsonResponse({ error: "Only the room creator can delete this room" }, { status: 403 });
+  }
+
+  // Delete messages first (due to foreign key)
+  await supabase.from("messages").delete().eq("room_id", roomId);
+
+  // Delete the room
+  const { error: deleteError } = await supabase
+    .from("rooms")
+    .delete()
+    .eq("id", roomId);
+
+  if (deleteError) {
+    console.error("Error deleting room", deleteError);
+    return jsonResponse({ error: "Failed to delete room" }, { status: 500 });
+  }
+
+  console.log("Room deleted:", roomId);
+  return jsonResponse({ success: true });
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -187,6 +259,10 @@ serve(async (req) => {
 
     if (req.method === "POST") {
       return await handlePost(req);
+    }
+
+    if (req.method === "DELETE") {
+      return await handleDelete(req);
     }
 
     return jsonResponse({ error: "Method not allowed" }, { status: 405 });

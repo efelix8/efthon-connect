@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Lock, Hash, Video, Pencil } from "lucide-react";
+import { Users, Lock, Hash, Video, Pencil, Trash2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { usePresence } from "@/hooks/use-presence";
 import { useVideoCall } from "@/hooks/use-video-call";
 import { useVoiceChat } from "@/hooks/use-voice-chat";
-import { fetchRooms, fetchMessages, sendMessage, markMessageAsRead, askAISinan, shouldTriggerAISinan, type Room, type ChatMessage } from "@/lib/chat-api";
+import { fetchRooms, fetchMessages, sendMessage, markMessageAsRead, askAISinan, shouldTriggerAISinan, deleteRoom, type Room, type ChatMessage } from "@/lib/chat-api";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,6 +90,31 @@ const Index = () => {
   const handleRoomUnlocked = (roomSlug: string) => {
     setUnlockedRooms((prev) => new Set(prev).add(roomSlug));
     setActiveRoomSlug(roomSlug);
+  };
+
+  const deleteRoomMutation = useMutation({
+    mutationFn: deleteRoom,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rooms"] });
+      toast({ title: "Başarılı", description: "Oda silindi" });
+      // If the deleted room was active, reset to first available room
+      if (rooms && rooms.length > 1) {
+        const remainingRooms = rooms.filter(r => r.slug !== activeRoomSlug);
+        const defaultRoom = remainingRooms.find(r => r.is_default) ?? remainingRooms[0];
+        if (defaultRoom) {
+          setActiveRoomSlug(defaultRoom.slug);
+        }
+      }
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Hata", description: error?.message ?? "Oda silinemedi" });
+    },
+  });
+
+  const handleDeleteRoom = (roomId: string, roomName: string) => {
+    if (confirm(`"${roomName}" odasını silmek istediğinizden emin misiniz? Tüm mesajlar da silinecek.`)) {
+      deleteRoomMutation.mutate(roomId);
+    }
   };
 
   const {
@@ -515,6 +540,16 @@ const Index = () => {
                       currentName={room.name}
                       isCreator={room.created_by === chatUserId}
                     />
+                    {room.created_by === chatUserId && !room.is_default && (
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRoom(room.id, room.name)}
+                        className="p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        title="Odayı sil"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
