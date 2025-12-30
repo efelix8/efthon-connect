@@ -82,7 +82,7 @@ export const SiteGate = ({ children }: SiteGateProps) => {
                 autoComplete="off"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="enesabipardon"
               />
               {error && (
                 <p className="text-xs text-destructive">{error}</p>
