@@ -19,6 +19,7 @@ import FileUpload from "@/components/ImageUpload";
 import { DrawingCanvas } from "@/components/DrawingCanvas";
 import StickerPicker from "@/components/StickerPicker";
 import { RoomPasswordDialog } from "@/components/RoomPasswordDialog";
+import { EditRoomDialog } from "@/components/EditRoomDialog";
 import { VideoCall } from "@/components/VideoCall";
 import { VoiceChannelList, VoiceControlBar } from "@/components/VoiceChannelList";
 import logoWatermark from "@/assets/logo-watermark.png";
@@ -489,22 +490,32 @@ const Index = () => {
                 {roomsLoading && <p className="text-xs text-muted-foreground px-2">Yükleniyor...</p>}
                 {roomsError && <p className="text-xs text-destructive px-2">Yüklenemedi.</p>}
                 {rooms?.map((room) => (
-                  <button
+                  <div
                     key={room.id}
-                    type="button"
-                    onClick={() => handleRoomSelect(room)}
-                    className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
-                      activeRoomSlug === room.slug
-                        ? "bg-primary/20 text-primary"
-                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                    }`}
+                    className="group flex items-center gap-1"
                   >
-                    <Hash className="h-4 w-4 flex-shrink-0" />
-                    <span className="truncate flex-1">{room.name}</span>
-                    {room.has_password && !unlockedRooms.has(room.slug) && (
-                      <Lock className="h-3 w-3 flex-shrink-0 opacity-60" />
-                    )}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRoomSelect(room)}
+                      className={`flex flex-1 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors ${
+                        activeRoomSlug === room.slug
+                          ? "bg-primary/20 text-primary"
+                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                      }`}
+                    >
+                      <Hash className="h-4 w-4 flex-shrink-0" />
+                      <span className="truncate flex-1">{room.name}</span>
+                      {room.has_password && !unlockedRooms.has(room.slug) && (
+                        <Lock className="h-3 w-3 flex-shrink-0 opacity-60" />
+                      )}
+                    </button>
+                    <EditRoomDialog
+                      roomId={room.id}
+                      roomSlug={room.slug}
+                      currentName={room.name}
+                      isCreator={room.created_by === chatUserId}
+                    />
+                  </div>
                 ))}
               </div>
               <div className="mt-2 px-2">
