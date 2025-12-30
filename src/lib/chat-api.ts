@@ -267,6 +267,25 @@ export const createRoom = async (name: string): Promise<Room> => {
   return data.room;
 };
 
+export const deleteRoom = async (roomId: string): Promise<void> => {
+  const session = await supabase.auth.getSession();
+  const accessToken = session.data.session?.access_token;
+  
+  if (!accessToken) throw new Error("Oturum bulunamadı");
+
+  const res = await fetch(`${FUNCTION_BASE}/rooms?id=${roomId}`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || "Oda silinirken bir hata oluştu");
+  }
+};
+
 export const uploadChatFile = async (file: File, userId: string): Promise<string> => {
   const fileExt = file.name.split('.').pop();
   const fileName = `${userId}/${Date.now()}.${fileExt}`;
