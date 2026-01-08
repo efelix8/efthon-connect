@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2 } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2, Shuffle, Repeat, Repeat1 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -22,6 +22,8 @@ const tracks: Track[] = [
   { id: 8, title: "Cry For Me", artist: "The Weeknd", url: "/music/cry-for-me.mp3" },
 ];
 
+type RepeatMode = "off" | "all" | "one";
+
 const MusicPlayer = () => {
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -29,9 +31,50 @@ const MusicPlayer = () => {
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(0.7);
   const [isMuted, setIsMuted] = useState(false);
+  const [isShuffleOn, setIsShuffleOn] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
+  const [shuffleHistory, setShuffleHistory] = useState<number[]>([]);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const currentTrack = tracks[currentTrackIndex];
+
+  const getRandomTrackIndex = useCallback((excludeIndex: number): number => {
+    if (tracks.length <= 1) return 0;
+    let randomIndex: number;
+    do {
+      randomIndex = Math.floor(Math.random() * tracks.length);
+    } while (randomIndex === excludeIndex);
+    return randomIndex;
+  }, []);
+
+  const handleNext = useCallback(() => {
+    let newIndex: number;
+    
+    if (repeatMode === "one") {
+      // Repeat current track
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play();
+      }
+      return;
+    }
+    
+    if (isShuffleOn) {
+      newIndex = getRandomTrackIndex(currentTrackIndex);
+      setShuffleHistory(prev => [...prev, currentTrackIndex]);
+    } else {
+      newIndex = currentTrackIndex === tracks.length - 1 ? 0 : currentTrackIndex + 1;
+      // If repeat is off and we reached the end, stop
+      if (repeatMode === "off" && currentTrackIndex === tracks.length - 1) {
+        setIsPlaying(false);
+        return;
+      }
+    }
+    
+    setCurrentTrackIndex(newIndex);
+    setIsPlaying(true);
+    setTimeout(() => audioRef.current?.play(), 100);
+  }, [currentTrackIndex, isShuffleOn, repeatMode, getRandomTrackIndex]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -50,7 +93,7 @@ const MusicPlayer = () => {
       audio.removeEventListener("loadedmetadata", handleLoadedMetadata);
       audio.removeEventListener("ended", handleEnded);
     };
-  }, [currentTrackIndex]);
+  }, [handleNext]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -69,14 +112,24 @@ const MusicPlayer = () => {
   };
 
   const handlePrevious = () => {
-    const newIndex = currentTrackIndex === 0 ? tracks.length - 1 : currentTrackIndex - 1;
-    setCurrentTrackIndex(newIndex);
-    setIsPlaying(true);
-    setTimeout(() => audioRef.current?.play(), 100);
-  };
-
-  const handleNext = () => {
-    const newIndex = currentTrackIndex === tracks.length - 1 ? 0 : currentTrackIndex + 1;
+    let newIndex: number;
+    
+    // If we're more than 3 seconds into the song, restart it
+    if (currentTime > 3) {
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+      }
+      return;
+    }
+    
+    if (isShuffleOn && shuffleHistory.length > 0) {
+      // Go back in shuffle history
+      newIndex = shuffleHistory[shuffleHistory.length - 1];
+      setShuffleHistory(prev => prev.slice(0, -1));
+    } else {
+      newIndex = currentTrackIndex === 0 ? tracks.length - 1 : currentTrackIndex - 1;
+    }
+    
     setCurrentTrackIndex(newIndex);
     setIsPlaying(true);
     setTimeout(() => audioRef.current?.play(), 100);
@@ -98,6 +151,19 @@ const MusicPlayer = () => {
     setIsMuted(!isMuted);
   };
 
+  const toggleShuffle = () => {
+    setIsShuffleOn(!isShuffleOn);
+    if (!isShuffleOn) {
+      setShuffleHistory([]);
+    }
+  };
+
+  const toggleRepeat = () => {
+    const modes: RepeatMode[] = ["off", "all", "one"];
+    const currentIndex = modes.indexOf(repeatMode);
+    setRepeatMode(modes[(currentIndex + 1) % modes.length]);
+  };
+
   const formatTime = (time: number) => {
     if (isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
@@ -106,6 +172,9 @@ const MusicPlayer = () => {
   };
 
   const selectTrack = (index: number) => {
+    if (isShuffleOn) {
+      setShuffleHistory(prev => [...prev, currentTrackIndex]);
+    }
     setCurrentTrackIndex(index);
     setIsPlaying(true);
     setTimeout(() => audioRef.current?.play(), 100);
@@ -177,7 +246,16 @@ const MusicPlayer = () => {
         </div>
 
         {/* Playback Controls */}
-        <div className="flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-1">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleShuffle}
+            className={cn("h-9 w-9", isShuffleOn && "text-primary")}
+            title={isShuffleOn ? "Karıştır: Açık" : "Karıştır: Kapalı"}
+          >
+            <Shuffle className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={handlePrevious}>
             <SkipBack className="h-5 w-5" />
           </Button>
@@ -194,6 +272,22 @@ const MusicPlayer = () => {
           </Button>
           <Button variant="ghost" size="icon" onClick={handleNext}>
             <SkipForward className="h-5 w-5" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleRepeat}
+            className={cn("h-9 w-9", repeatMode !== "off" && "text-primary")}
+            title={
+              repeatMode === "off" ? "Tekrar: Kapalı" : 
+              repeatMode === "all" ? "Tekrar: Tümü" : "Tekrar: Bir"
+            }
+          >
+            {repeatMode === "one" ? (
+              <Repeat1 className="h-4 w-4" />
+            ) : (
+              <Repeat className="h-4 w-4" />
+            )}
           </Button>
         </div>
 
