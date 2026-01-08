@@ -1,30 +1,35 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2, Shuffle, Repeat, Repeat1 } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2, Shuffle, Repeat, Repeat1, Upload, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Track {
-  id: number;
+  id: string;
   title: string;
   artist: string;
   url: string;
 }
 
-const tracks: Track[] = [
-  { id: 1, title: "Move x Asrın Hatası", artist: "Adam Port x Serdar Ortaç (Mashup)", url: "/music/move-asrin-hatasi-mashup.mp3" },
-  { id: 2, title: "Ex Aşkım", artist: "Unknown", url: "/music/ex-askim.mp3" },
-  { id: 3, title: "Sopa (Dance Remix)", artist: "Hande Yener", url: "/music/sopa-dance-remix.mp3" },
-  { id: 4, title: "Kırmızı", artist: "Hande Yener", url: "/music/kirmizi.mp3" },
-  { id: 5, title: "Uçurum x Derine Derine", artist: "Turker Mashup", url: "/music/ucurum-derine-mashup.mp3" },
-  { id: 6, title: "Ortam 2.0", artist: "Organize x Lvbel C5 x Demet Akalın", url: "/music/ortam-organize.mp3" },
-  { id: 7, title: "Noluyo Lan!", artist: "Organize ft. Batuflex, Eray067, Mansur", url: "/music/noluyo-lan.mp3" },
-  { id: 8, title: "Cry For Me", artist: "The Weeknd", url: "/music/cry-for-me.mp3" },
+const defaultTracks: Track[] = [
+  { id: "1", title: "Move x Asrın Hatası", artist: "Adam Port x Serdar Ortaç (Mashup)", url: "/music/move-asrin-hatasi-mashup.mp3" },
+  { id: "2", title: "Ex Aşkım", artist: "Unknown", url: "/music/ex-askim.mp3" },
+  { id: "3", title: "Sopa (Dance Remix)", artist: "Hande Yener", url: "/music/sopa-dance-remix.mp3" },
+  { id: "4", title: "Kırmızı", artist: "Hande Yener", url: "/music/kirmizi.mp3" },
+  { id: "5", title: "Uçurum x Derine Derine", artist: "Turker Mashup", url: "/music/ucurum-derine-mashup.mp3" },
+  { id: "6", title: "Ortam 2.0", artist: "Organize x Lvbel C5 x Demet Akalın", url: "/music/ortam-organize.mp3" },
+  { id: "7", title: "Noluyo Lan!", artist: "Organize ft. Batuflex, Eray067, Mansur", url: "/music/noluyo-lan.mp3" },
+  { id: "8", title: "Cry For Me", artist: "The Weeknd", url: "/music/cry-for-me.mp3" },
 ];
 
 type RepeatMode = "off" | "all" | "one";
 
 const MusicPlayer = () => {
+  const [tracks, setTracks] = useState<Track[]>(defaultTracks);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -37,6 +42,100 @@ const MusicPlayer = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const currentTrack = tracks[currentTrackIndex];
+
+  // Fetch uploaded tracks from database
+  useEffect(() => {
+    const fetchUploadedTracks = async () => {
+      const { data, error } = await supabase
+        .from('music_tracks')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (!error && data) {
+        const uploadedTracks: Track[] = data.map(t => ({
+          id: t.id,
+          title: t.title,
+          artist: t.artist,
+          url: t.file_url
+        }));
+        setTracks([...defaultTracks, ...uploadedTracks]);
+      }
+    };
+
+    fetchUploadedTracks();
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('music-tracks')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'music_tracks' }, (payload) => {
+        const newTrack: Track = {
+          id: payload.new.id,
+          title: payload.new.title,
+          artist: payload.new.artist,
+          url: payload.new.file_url
+        };
+        setTracks(prev => [...prev, newTrack]);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.includes('audio/')) {
+      toast.error('Sadece MP3 dosyaları yüklenebilir');
+      return;
+    }
+
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Dosya boyutu 50MB\'dan küçük olmalı');
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const fileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('music')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('music')
+        .getPublicUrl(fileName);
+
+      // Extract title from filename
+      const title = file.name.replace(/\.mp3$/i, '').replace(/_/g, ' ');
+
+      const { error: dbError } = await supabase
+        .from('music_tracks')
+        .insert({
+          title,
+          artist: 'Yüklenen Şarkı',
+          file_url: publicUrl
+        });
+
+      if (dbError) throw dbError;
+
+      toast.success('Şarkı başarıyla yüklendi!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error('Şarkı yüklenirken hata oluştu');
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
 
   const getRandomTrackIndex = useCallback((excludeIndex: number): number => {
     if (tracks.length <= 1) return 0;
@@ -183,9 +282,34 @@ const MusicPlayer = () => {
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-card to-background">
       {/* Header */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-border">
-        <Music2 className="h-5 w-5 text-primary" />
-        <h2 className="text-lg font-semibold">Müzik Çalar</h2>
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Music2 className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">Müzik Çalar</h2>
+        </div>
+        <div>
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="audio/mpeg,audio/mp3"
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={isUploading}
+            className="gap-1.5"
+          >
+            {isUploading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Upload className="h-4 w-4" />
+            )}
+            {isUploading ? 'Yükleniyor...' : 'Şarkı Yükle'}
+          </Button>
+        </div>
       </div>
 
       {/* Track List */}
