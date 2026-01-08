@@ -23,6 +23,7 @@ const defaultTracks: Track[] = [
   { id: "6", title: "Ortam 2.0", artist: "Organize x Lvbel C5 x Demet Akalın", url: "/music/ortam-organize.mp3", coverUrl: "/covers/ortam-2.png" },
   { id: "7", title: "Noluyo Lan!", artist: "Organize ft. Batuflex, Eray067, Mansur", url: "/music/noluyo-lan.mp3", coverUrl: "/covers/noluyo-lan.png" },
   { id: "8", title: "Cry For Me", artist: "The Weeknd", url: "/music/cry-for-me.mp3" },
+  { id: "9", title: "Positions", artist: "Ariana Grande", url: "/music/positions.mp3", coverUrl: "/covers/positions.png" },
 ];
 
 type RepeatMode = "off" | "all" | "one";
