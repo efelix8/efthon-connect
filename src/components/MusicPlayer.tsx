@@ -17,7 +17,7 @@ interface Track {
 const defaultTracks: Track[] = [
   { id: "1", title: "Move x Asrın Hatası", artist: "Adam Port x Serdar Ortaç (Mashup)", url: "/music/move-asrin-hatasi-mashup.mp3" },
   { id: "2", title: "Ex Aşkım", artist: "Kenan Doğulu", url: "/music/ex-askim.mp3", coverUrl: "/covers/ex-askim.png" },
-  { id: "3", title: "Sopa (Dance Remix)", artist: "Hande Yener", url: "/music/sopa-dance-remix.mp3" },
+  { id: "3", title: "Sopa (Dance Remix)", artist: "Hande Yener", url: "/music/sopa-dance-remix.mp3", coverUrl: "/covers/sopa-dance-remix.png" },
   { id: "4", title: "Kırmızı", artist: "Hande Yener", url: "/music/kirmizi.mp3" },
   { id: "5", title: "Uçurum x Derine Derine", artist: "Turker Mashup", url: "/music/ucurum-derine-mashup.mp3" },
   { id: "6", title: "Ortam 2.0", artist: "Organize x Lvbel C5 x Demet Akalın", url: "/music/ortam-organize.mp3" },
