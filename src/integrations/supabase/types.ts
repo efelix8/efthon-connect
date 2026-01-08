@@ -125,6 +125,33 @@ export type Database = {
           },
         ]
       }
+      music_tracks: {
+        Row: {
+          artist: string
+          created_at: string
+          file_url: string
+          id: string
+          title: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          artist?: string
+          created_at?: string
+          file_url: string
+          id?: string
+          title: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          artist?: string
+          created_at?: string
+          file_url?: string
+          id?: string
+          title?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
