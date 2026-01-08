@@ -24,6 +24,7 @@ const defaultTracks: Track[] = [
   { id: "7", title: "Noluyo Lan!", artist: "Organize ft. Batuflex, Eray067, Mansur", url: "/music/noluyo-lan.mp3", coverUrl: "/covers/noluyo-lan.png" },
   { id: "8", title: "Cry For Me", artist: "The Weeknd", url: "/music/cry-for-me.mp3" },
   { id: "9", title: "Positions", artist: "Ariana Grande", url: "/music/positions.mp3", coverUrl: "/covers/positions.png" },
+  { id: "10", title: "Wacuka", artist: "Chris Avantgarde", url: "/music/wacuka.mp3", coverUrl: "/covers/wacuka.png" },
 ];
 
 type RepeatMode = "off" | "all" | "one";
