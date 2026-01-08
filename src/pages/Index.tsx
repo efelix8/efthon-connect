@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Users, Lock, Hash, Video, Pencil, Trash2 } from "lucide-react";
+import { Users, Lock, Hash, Video, Pencil, Trash2, Music2 } from "lucide-react";
 
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
@@ -22,6 +22,7 @@ import { RoomPasswordDialog } from "@/components/RoomPasswordDialog";
 import { EditRoomDialog } from "@/components/EditRoomDialog";
 import { VideoCall } from "@/components/VideoCall";
 import { VoiceChannelList, VoiceControlBar } from "@/components/VoiceChannelList";
+import MusicPlayer from "@/components/MusicPlayer";
 import logoWatermark from "@/assets/logo-watermark.png";
 
 const MAX_ROOMS = 10;
@@ -528,7 +529,11 @@ const Index = () => {
                           : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                       }`}
                     >
-                      <Hash className="h-4 w-4 flex-shrink-0" />
+                      {room.slug === "muzik" ? (
+                        <Music2 className="h-4 w-4 flex-shrink-0" />
+                      ) : (
+                        <Hash className="h-4 w-4 flex-shrink-0" />
+                      )}
                       <span className="truncate flex-1">{room.name}</span>
                       {room.has_password && !unlockedRooms.has(room.slug) && (
                         <Lock className="h-3 w-3 flex-shrink-0 opacity-60" />
@@ -606,95 +611,101 @@ const Index = () => {
           </header>
 
           <section className="flex flex-1 flex-col">
-            <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
-              {messagesLoading && (
-                <p className="text-xs text-muted-foreground">Mesajlar yükleniyor...</p>
-              )}
-              {!messagesLoading && messages.length === 0 && (
-                <p className="text-xs text-muted-foreground">Bu odada henüz mesaj yok.</p>
-              )}
-              {messages.map((m, index) => {
-                const prevMessage = messages[index - 1];
-                const nextMessage = messages[index + 1];
-                const isFirstInGroup = !prevMessage || prevMessage.user?.id !== m.user?.id;
-                const isLastInGroup = !nextMessage || nextMessage.user?.id !== m.user?.id;
-                
-                return (
-                  <div key={m.id} className={!isLastInGroup ? "-mb-2" : ""}>
-                    <MessageItem
-                      message={m}
-                      isOwn={m.user?.id === chatUserId}
-                      activeRoomSlug={activeRoomSlug ?? ""}
-                      isFirstInGroup={isFirstInGroup}
-                      isLastInGroup={isLastInGroup}
+            {activeRoomSlug === "muzik" ? (
+              <MusicPlayer />
+            ) : (
+              <>
+                <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+                  {messagesLoading && (
+                    <p className="text-xs text-muted-foreground">Mesajlar yükleniyor...</p>
+                  )}
+                  {!messagesLoading && messages.length === 0 && (
+                    <p className="text-xs text-muted-foreground">Bu odada henüz mesaj yok.</p>
+                  )}
+                  {messages.map((m, index) => {
+                    const prevMessage = messages[index - 1];
+                    const nextMessage = messages[index + 1];
+                    const isFirstInGroup = !prevMessage || prevMessage.user?.id !== m.user?.id;
+                    const isLastInGroup = !nextMessage || nextMessage.user?.id !== m.user?.id;
+                    
+                    return (
+                      <div key={m.id} className={!isLastInGroup ? "-mb-2" : ""}>
+                        <MessageItem
+                          message={m}
+                          isOwn={m.user?.id === chatUserId}
+                          activeRoomSlug={activeRoomSlug ?? ""}
+                          isFirstInGroup={isFirstInGroup}
+                          isLastInGroup={isLastInGroup}
+                        />
+                      </div>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                <form onSubmit={handleSend} className="border-t border-border bg-card/60 px-4 py-3">
+                  <div className="flex gap-2 items-center">
+                    {user?.id && (
+                      <FileUpload
+                        userId={user.id}
+                        onFileUploaded={(url, type) => setUploadedFile({ url, type })}
+                        onFileRemoved={() => setUploadedFile(null)}
+                        filePreview={uploadedFile}
+                        disabled={sendMessageMutation.isPending}
+                      />
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={joinCall}
+                      disabled={!activeRoomSlug}
+                      title="Görüntülü aramaya katıl"
+                    >
+                      <Video className="h-5 w-5" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setDrawingOpen(true)}
+                      disabled={sendMessageMutation.isPending}
+                      title="Çizim yap"
+                    >
+                      <Pencil className="h-5 w-5" />
+                    </Button>
+                    <StickerPicker
+                      onStickerSelect={(sticker) => setMessage((prev) => prev + sticker)}
+                      onImageStickerSelect={handleImageStickerSelect}
+                      disabled={sendMessageMutation.isPending}
                     />
+                    <Input
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder="Mesajını yaz..."
+                      disabled={sendMessageMutation.isPending}
+                      className="flex-1"
+                    />
+
+                    {user?.id && (
+                      <DrawingCanvas
+                        open={drawingOpen}
+                        onOpenChange={setDrawingOpen}
+                        userId={user.id}
+                        onImageSend={handleImageStickerSelect}
+                        disabled={sendMessageMutation.isPending}
+                      />
+                    )}
+                    <Button 
+                      type="submit" 
+                      disabled={sendMessageMutation.isPending || (!message.trim() && !uploadedFile)}
+                    >
+                      Gönder
+                    </Button>
                   </div>
-                );
-              })}
-              <div ref={messagesEndRef} />
-            </div>
-
-            <form onSubmit={handleSend} className="border-t border-border bg-card/60 px-4 py-3">
-              <div className="flex gap-2 items-center">
-                {user?.id && (
-                  <FileUpload
-                    userId={user.id}
-                    onFileUploaded={(url, type) => setUploadedFile({ url, type })}
-                    onFileRemoved={() => setUploadedFile(null)}
-                    filePreview={uploadedFile}
-                    disabled={sendMessageMutation.isPending}
-                  />
-                )}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={joinCall}
-                  disabled={!activeRoomSlug}
-                  title="Görüntülü aramaya katıl"
-                >
-                  <Video className="h-5 w-5" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setDrawingOpen(true)}
-                  disabled={sendMessageMutation.isPending}
-                  title="Çizim yap"
-                >
-                  <Pencil className="h-5 w-5" />
-                </Button>
-                <StickerPicker
-                  onStickerSelect={(sticker) => setMessage((prev) => prev + sticker)}
-                  onImageStickerSelect={handleImageStickerSelect}
-                  disabled={sendMessageMutation.isPending}
-                />
-                <Input
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Mesajını yaz..."
-                  disabled={sendMessageMutation.isPending}
-                  className="flex-1"
-      />
-
-      {user?.id && (
-        <DrawingCanvas
-          open={drawingOpen}
-          onOpenChange={setDrawingOpen}
-          userId={user.id}
-          onImageSend={handleImageStickerSelect}
-          disabled={sendMessageMutation.isPending}
-        />
-      )}
-                <Button 
-                  type="submit" 
-                  disabled={sendMessageMutation.isPending || (!message.trim() && !uploadedFile)}
-                >
-                  Gönder
-                </Button>
-              </div>
-            </form>
+                </form>
+              </>
+            )}
           </section>
         </main>
       </div>
