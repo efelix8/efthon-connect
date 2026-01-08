@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2, Shuffle, Repeat, Repeat1, Upload, Loader2 } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2, Shuffle, Repeat, Repeat1, Upload, Loader2, ImagePlus, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -11,6 +11,7 @@ interface Track {
   title: string;
   artist: string;
   url: string;
+  coverUrl?: string;
 }
 
 const defaultTracks: Track[] = [
@@ -56,7 +57,8 @@ const MusicPlayer = () => {
           id: t.id,
           title: t.title,
           artist: t.artist,
-          url: t.file_url
+          url: t.file_url,
+          coverUrl: t.cover_url || undefined
         }));
         setTracks([...defaultTracks, ...uploadedTracks]);
       }
@@ -67,14 +69,23 @@ const MusicPlayer = () => {
     // Subscribe to realtime updates
     const channel = supabase
       .channel('music-tracks')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'music_tracks' }, (payload) => {
-        const newTrack: Track = {
-          id: payload.new.id,
-          title: payload.new.title,
-          artist: payload.new.artist,
-          url: payload.new.file_url
-        };
-        setTracks(prev => [...prev, newTrack]);
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'music_tracks' }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const newTrack: Track = {
+            id: payload.new.id,
+            title: payload.new.title,
+            artist: payload.new.artist,
+            url: payload.new.file_url,
+            coverUrl: payload.new.cover_url || undefined
+          };
+          setTracks(prev => [...prev, newTrack]);
+        } else if (payload.eventType === 'UPDATE') {
+          setTracks(prev => prev.map(t => 
+            t.id === payload.new.id 
+              ? { ...t, coverUrl: payload.new.cover_url || undefined }
+              : t
+          ));
+        }
       })
       .subscribe();
 
@@ -279,6 +290,43 @@ const MusicPlayer = () => {
     setTimeout(() => audioRef.current?.play(), 100);
   };
 
+  const handleCoverUpload = async (trackId: string, file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Sadece resim dosyaları yüklenebilir');
+      return;
+    }
+
+    try {
+      const fileName = `covers/${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('music')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('music')
+        .getPublicUrl(fileName);
+
+      const { error: dbError } = await supabase
+        .from('music_tracks')
+        .update({ cover_url: publicUrl })
+        .eq('id', trackId);
+
+      if (dbError) throw dbError;
+
+      setTracks(prev => prev.map(t => 
+        t.id === trackId ? { ...t, coverUrl: publicUrl } : t
+      ));
+
+      toast.success('Kapak görseli eklendi!');
+    } catch (error) {
+      console.error('Cover upload error:', error);
+      toast.error('Kapak görseli yüklenirken hata oluştu');
+    }
+  };
+
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-card to-background">
       {/* Header */}
@@ -315,43 +363,104 @@ const MusicPlayer = () => {
       {/* Track List */}
       <div className="flex-1 overflow-y-auto p-2">
         <div className="space-y-1">
-          {tracks.map((track, index) => (
-            <button
-              key={track.id}
-              onClick={() => selectTrack(index)}
-              className={cn(
-                "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-all",
-                index === currentTrackIndex
-                  ? "bg-primary/20 text-primary"
-                  : "hover:bg-accent text-foreground"
-              )}
-            >
-              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10">
-                {index === currentTrackIndex && isPlaying ? (
-                  <div className="flex items-center gap-0.5">
-                    <span className="w-0.5 h-3 bg-primary animate-pulse" />
-                    <span className="w-0.5 h-4 bg-primary animate-pulse delay-75" />
-                    <span className="w-0.5 h-2 bg-primary animate-pulse delay-150" />
+          {tracks.map((track, index) => {
+            const isDbTrack = !defaultTracks.some(dt => dt.id === track.id);
+            return (
+              <div
+                key={track.id}
+                className={cn(
+                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
+                  index === currentTrackIndex
+                    ? "bg-primary/20 text-primary"
+                    : "hover:bg-accent text-foreground"
+                )}
+              >
+                <button
+                  onClick={() => selectTrack(index)}
+                  className="flex items-center gap-3 flex-1 min-w-0 text-left"
+                >
+                  {/* Cover or Index */}
+                  <div className="relative w-10 h-10 rounded-md bg-primary/10 flex-shrink-0 overflow-hidden">
+                    {track.coverUrl ? (
+                      <img 
+                        src={track.coverUrl} 
+                        alt={track.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : index === currentTrackIndex && isPlaying ? (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="flex items-center gap-0.5">
+                          <span className="w-0.5 h-3 bg-primary animate-pulse" />
+                          <span className="w-0.5 h-4 bg-primary animate-pulse delay-75" />
+                          <span className="w-0.5 h-2 bg-primary animate-pulse delay-150" />
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Music2 className="w-4 h-4 text-muted-foreground" />
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <span className="text-xs font-medium text-muted-foreground">{index + 1}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{track.title}</p>
+                    <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
+                  </div>
+                </button>
+                {/* Cover upload button for db tracks */}
+                {isDbTrack && (
+                  <label className="cursor-pointer p-1.5 rounded-md hover:bg-accent transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleCoverUpload(track.id, file);
+                        e.target.value = '';
+                      }}
+                    />
+                    <ImagePlus className="w-4 h-4 text-muted-foreground" />
+                  </label>
                 )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{track.title}</p>
-                <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
-              </div>
-            </button>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Player Controls */}
       <div className="border-t border-border bg-card/80 backdrop-blur-sm p-4 space-y-3">
-        {/* Current Track Info */}
-        <div className="text-center">
-          <p className="text-sm font-semibold truncate">{currentTrack.title}</p>
-          <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+        {/* Large Cover Preview */}
+        <div className="flex items-center gap-4">
+          <div className={cn(
+            "relative rounded-lg overflow-hidden bg-primary/10 flex-shrink-0 transition-all duration-300",
+            isPlaying ? "w-20 h-20" : "w-16 h-16"
+          )}>
+            {currentTrack.coverUrl ? (
+              <img 
+                src={currentTrack.coverUrl} 
+                alt={currentTrack.title}
+                className={cn(
+                  "w-full h-full object-cover transition-transform duration-300",
+                  isPlaying && "animate-pulse"
+                )}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Music2 className={cn(
+                  "text-muted-foreground transition-all",
+                  isPlaying ? "w-8 h-8" : "w-6 h-6"
+                )} />
+              </div>
+            )}
+            {isPlaying && (
+              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate">{currentTrack.title}</p>
+            <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+          </div>
         </div>
 
         {/* Progress Bar */}
