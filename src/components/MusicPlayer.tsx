@@ -21,7 +21,7 @@ const defaultTracks: Track[] = [
   { id: "4", title: "Kırmızı", artist: "Hande Yener", url: "/music/kirmizi.mp3", coverUrl: "/covers/kirmizi.jpg" },
   { id: "5", title: "Uçurum x Derine Derine", artist: "Turker Mashup", url: "/music/ucurum-derine-mashup.mp3", coverUrl: "/covers/ucurum-derine.png" },
   { id: "6", title: "Ortam 2.0", artist: "Organize x Lvbel C5 x Demet Akalın", url: "/music/ortam-organize.mp3", coverUrl: "/covers/ortam-2.png" },
-  { id: "7", title: "Noluyo Lan!", artist: "Organize ft. Batuflex, Eray067, Mansur", url: "/music/noluyo-lan.mp3", coverUrl: "/covers/noluyo-lan.jpg" },
+  { id: "7", title: "Noluyo Lan!", artist: "Organize ft. Batuflex, Eray067, Mansur", url: "/music/noluyo-lan.mp3", coverUrl: "/covers/noluyo-lan.png" },
   { id: "8", title: "Cry For Me", artist: "The Weeknd", url: "/music/cry-for-me.mp3" },
 ];
 
