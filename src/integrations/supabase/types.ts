@@ -128,6 +128,7 @@ export type Database = {
       music_tracks: {
         Row: {
           artist: string
+          cover_url: string | null
           created_at: string
           file_url: string
           id: string
@@ -136,6 +137,7 @@ export type Database = {
         }
         Insert: {
           artist?: string
+          cover_url?: string | null
           created_at?: string
           file_url: string
           id?: string
@@ -144,6 +146,7 @@ export type Database = {
         }
         Update: {
           artist?: string
+          cover_url?: string | null
           created_at?: string
           file_url?: string
           id?: string
