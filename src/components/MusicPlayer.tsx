@@ -433,33 +433,30 @@ const MusicPlayer = () => {
         {/* Large Cover Preview */}
         <div className="flex items-center gap-4">
           <div className={cn(
-            "relative rounded-lg overflow-hidden bg-primary/10 flex-shrink-0 transition-all duration-300",
-            isPlaying ? "w-20 h-20" : "w-16 h-16"
+            "relative rounded-xl overflow-hidden bg-primary/10 flex-shrink-0 transition-all duration-300 shadow-lg",
+            isPlaying ? "w-28 h-28" : "w-24 h-24"
           )}>
             {currentTrack.coverUrl ? (
               <img 
                 src={currentTrack.coverUrl} 
                 alt={currentTrack.title}
-                className={cn(
-                  "w-full h-full object-cover transition-transform duration-300",
-                  isPlaying && "animate-pulse"
-                )}
+                className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
                 <Music2 className={cn(
-                  "text-muted-foreground transition-all",
-                  isPlaying ? "w-8 h-8" : "w-6 h-6"
+                  "text-primary/60 transition-all",
+                  isPlaying ? "w-12 h-12" : "w-10 h-10"
                 )} />
               </div>
             )}
-            {isPlaying && (
-              <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+            {isPlaying && currentTrack.coverUrl && (
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold truncate">{currentTrack.title}</p>
-            <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+            <p className="font-semibold truncate">{currentTrack.title}</p>
+            <p className="text-sm text-muted-foreground truncate">{currentTrack.artist}</p>
           </div>
         </div>
 
