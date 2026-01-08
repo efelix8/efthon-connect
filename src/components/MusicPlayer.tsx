@@ -406,22 +406,20 @@ const MusicPlayer = () => {
                     <p className="text-xs text-muted-foreground truncate">{track.artist}</p>
                   </div>
                 </button>
-                {/* Cover upload button for db tracks */}
-                {isDbTrack && (
-                  <label className="cursor-pointer p-1.5 rounded-md hover:bg-accent transition-colors">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) handleCoverUpload(track.id, file);
-                        e.target.value = '';
-                      }}
-                    />
-                    <ImagePlus className="w-4 h-4 text-muted-foreground" />
-                  </label>
-                )}
+                {/* Cover upload button - for all tracks */}
+                <label className="cursor-pointer p-1.5 rounded-md hover:bg-accent/80 transition-colors" title="Kapak görseli ekle/değiştir">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleCoverUpload(track.id, file);
+                      e.target.value = '';
+                    }}
+                  />
+                  <ImagePlus className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+                </label>
               </div>
             );
           })}
