@@ -64,7 +64,7 @@ async function handleGet(req: Request): Promise<Response> {
 
   const { data, error } = await supabase
     .from("rooms")
-    .select("id, slug, name, is_default, created_at, created_by, password_hash")
+    .select("id, slug, name, is_default, created_at, created_by, password_hash, background_url")
     .order("is_default", { ascending: false })
     .order("name", { ascending: true });
 
@@ -82,6 +82,7 @@ async function handleGet(req: Request): Promise<Response> {
     created_at: room.created_at,
     created_by: room.created_by,
     has_password: !!room.password_hash,
+    background_url: room.background_url,
   }));
 
   return jsonResponse({ rooms });

@@ -184,6 +184,7 @@ export type Database = {
       }
       rooms: {
         Row: {
+          background_url: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -193,6 +194,7 @@ export type Database = {
           slug: string
         }
         Insert: {
+          background_url?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -202,6 +204,7 @@ export type Database = {
           slug: string
         }
         Update: {
+          background_url?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
