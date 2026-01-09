@@ -25,6 +25,7 @@ const defaultTracks: Track[] = [
   { id: "8", title: "Cry For Me", artist: "The Weeknd", url: "/music/cry-for-me.mp3" },
   { id: "9", title: "Positions", artist: "Ariana Grande", url: "/music/positions.mp3", coverUrl: "/covers/positions.png" },
   { id: "10", title: "Wacuka", artist: "Chris Avantgarde", url: "/music/wacuka.mp3", coverUrl: "/covers/wacuka.png" },
+  { id: "11", title: "Anchor Point", artist: "Ahmed Spins", url: "/music/anchor-point.mp3", coverUrl: "/covers/anchor-point.png" },
 ];
 
 type RepeatMode = "off" | "all" | "one";
