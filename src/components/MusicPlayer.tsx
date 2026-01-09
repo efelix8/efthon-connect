@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2, Shuffle, Repeat, Repeat1, Upload, Loader2, ImagePlus, X, RotateCcw, RotateCw } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2, Shuffle, Repeat, Repeat1, Upload, Loader2, ImagePlus, X, RotateCcw, RotateCw, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -44,6 +44,7 @@ const MusicPlayer = () => {
   const [isShuffleOn, setIsShuffleOn] = useState(false);
   const [repeatMode, setRepeatMode] = useState<RepeatMode>("off");
   const [shuffleHistory, setShuffleHistory] = useState<number[]>([]);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   const currentTrack = tracks[currentTrackIndex];
@@ -556,22 +557,46 @@ const MusicPlayer = () => {
           </Button>
         </div>
 
-        {/* Volume Control */}
-        <div className="flex items-center justify-center gap-2">
-          <Button variant="ghost" size="icon" onClick={toggleMute} className="h-9 w-9">
-            {isMuted || volume === 0 ? (
-              <VolumeX className="h-5 w-5" />
-            ) : (
-              <Volume2 className="h-5 w-5" />
-            )}
-          </Button>
-          <Slider
-            value={[isMuted ? 0 : volume]}
-            max={1}
-            step={0.01}
-            onValueChange={handleVolumeChange}
-            className="w-32 cursor-pointer"
-          />
+        {/* Volume & Speed Controls */}
+        <div className="flex items-center justify-center gap-6">
+          {/* Volume */}
+          <div className="flex items-center gap-2">
+            <Button variant="ghost" size="icon" onClick={toggleMute} className="h-9 w-9">
+              {isMuted || volume === 0 ? (
+                <VolumeX className="h-5 w-5" />
+              ) : (
+                <Volume2 className="h-5 w-5" />
+              )}
+            </Button>
+            <Slider
+              value={[isMuted ? 0 : volume]}
+              max={1}
+              step={0.01}
+              onValueChange={handleVolumeChange}
+              className="w-24 cursor-pointer"
+            />
+          </div>
+
+          {/* Speed Control */}
+          <div className="flex items-center gap-2">
+            <Gauge className="h-5 w-5 text-muted-foreground" />
+            <Slider
+              value={[playbackRate]}
+              min={0.5}
+              max={2}
+              step={0.1}
+              onValueChange={(value) => {
+                setPlaybackRate(value[0]);
+                if (audioRef.current) {
+                  audioRef.current.playbackRate = value[0];
+                  // Disable preservesPitch to allow pitch to change with speed
+                  audioRef.current.preservesPitch = false;
+                }
+              }}
+              className="w-24 cursor-pointer"
+            />
+            <span className="text-xs text-muted-foreground w-10 font-mono">{playbackRate.toFixed(1)}x</span>
+          </div>
         </div>
       </div>
 
