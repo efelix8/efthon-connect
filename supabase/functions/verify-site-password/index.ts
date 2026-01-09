@@ -19,6 +19,7 @@ serve(async (req) => {
       "zeynepidigü",
       "sinangür",
       "elifnalbantoğlu",
+      "sarp",
     ];
     
     // Also check the environment variable password if set
