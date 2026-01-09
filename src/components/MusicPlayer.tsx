@@ -26,6 +26,7 @@ const defaultTracks: Track[] = [
   { id: "9", title: "Positions", artist: "Ariana Grande", url: "/music/positions.mp3", coverUrl: "/covers/positions.png" },
   { id: "10", title: "Wacuka", artist: "Chris Avantgarde", url: "/music/wacuka.mp3", coverUrl: "/covers/wacuka.png" },
   { id: "11", title: "Anchor Point", artist: "Ahmed Spins", url: "/music/anchor-point.mp3", coverUrl: "/covers/anchor-point.png" },
+  { id: "12", title: "Aya Benzer", artist: "Mustafa Sandal", url: "/music/aya-benzer.mp3", coverUrl: "/covers/aya-benzer.png" },
 ];
 
 type RepeatMode = "off" | "all" | "one";
