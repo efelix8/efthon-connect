@@ -428,117 +428,130 @@ const MusicPlayer = () => {
         </div>
       </div>
 
-      {/* Player Controls */}
-      <div className="border-t border-border bg-card/80 backdrop-blur-sm p-4 space-y-3">
-        {/* Large Cover Preview */}
+      {/* Player Controls - Spotify Style */}
+      <div className="border-t border-border bg-card/95 backdrop-blur-md p-4">
         <div className="flex items-center gap-4">
-          <div className={cn(
-            "relative rounded-xl overflow-hidden bg-primary/10 flex-shrink-0 transition-all duration-300 shadow-lg",
-            isPlaying ? "w-28 h-28" : "w-24 h-24"
-          )}>
+          {/* Large Cover Image */}
+          <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-primary/10 flex-shrink-0 shadow-xl ring-1 ring-white/10">
             {currentTrack.coverUrl ? (
               <img 
                 src={currentTrack.coverUrl} 
                 alt={currentTrack.title}
-                className="w-full h-full object-cover"
+                className={cn(
+                  "w-full h-full object-cover transition-transform duration-500",
+                  isPlaying && "scale-105"
+                )}
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                <Music2 className={cn(
-                  "text-primary/60 transition-all",
-                  isPlaying ? "w-12 h-12" : "w-10 h-10"
-                )} />
+              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/5">
+                <Music2 className="w-8 h-8 text-primary/60" />
               </div>
             )}
-            {isPlaying && currentTrack.coverUrl && (
-              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            {isPlaying && (
+              <div className="absolute bottom-1 right-1 w-2.5 h-2.5 bg-primary rounded-full animate-pulse" />
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold truncate">{currentTrack.title}</p>
-            <p className="text-sm text-muted-foreground truncate">{currentTrack.artist}</p>
+
+          {/* Track Info + Progress + Controls */}
+          <div className="flex-1 min-w-0 space-y-2">
+            {/* Track Title & Artist */}
+            <div>
+              <p className="font-semibold text-sm truncate">{currentTrack.title}</p>
+              <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
+            </div>
+
+            {/* Spotify-style Progress Bar */}
+            <div className="group relative">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted-foreground w-8 text-right font-mono">{formatTime(currentTime)}</span>
+                <div className="flex-1 relative h-5 flex items-center">
+                  <div className="absolute inset-x-0 h-1 bg-muted rounded-full overflow-hidden">
+                    <div 
+                      className="absolute inset-y-0 left-0 bg-primary/60 group-hover:bg-primary transition-colors rounded-full"
+                      style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <Slider
+                    value={[currentTime]}
+                    max={duration || 100}
+                    step={0.1}
+                    onValueChange={handleSeek}
+                    className="absolute inset-0 cursor-pointer [&_[data-slot=track]]:bg-transparent [&_[data-slot=range]]:bg-transparent [&_[data-slot=thumb]]:w-3 [&_[data-slot=thumb]]:h-3 [&_[data-slot=thumb]]:opacity-0 group-hover:[&_[data-slot=thumb]]:opacity-100 [&_[data-slot=thumb]]:transition-opacity [&_[data-slot=thumb]]:bg-foreground [&_[data-slot=thumb]]:border-0 [&_[data-slot=thumb]]:shadow-lg"
+                  />
+                </div>
+                <span className="text-[10px] text-muted-foreground w-8 font-mono">{formatTime(duration)}</span>
+              </div>
+            </div>
+
+            {/* Compact Playback Controls */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-0.5">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={toggleShuffle}
+                  className={cn("h-7 w-7", isShuffleOn && "text-primary")}
+                  title={isShuffleOn ? "Karıştır: Açık" : "Karıştır: Kapalı"}
+                >
+                  <Shuffle className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handlePrevious} className="h-7 w-7">
+                  <SkipBack className="h-4 w-4" />
+                </Button>
+                <Button 
+                  size="icon" 
+                  onClick={togglePlay}
+                  className="h-9 w-9 rounded-full mx-1"
+                >
+                  {isPlaying ? (
+                    <Pause className="h-4 w-4" />
+                  ) : (
+                    <Play className="h-4 w-4 ml-0.5" />
+                  )}
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleNext} className="h-7 w-7">
+                  <SkipForward className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={toggleRepeat}
+                  className={cn("h-7 w-7", repeatMode !== "off" && "text-primary")}
+                  title={
+                    repeatMode === "off" ? "Tekrar: Kapalı" : 
+                    repeatMode === "all" ? "Tekrar: Tümü" : "Tekrar: Bir"
+                  }
+                >
+                  {repeatMode === "one" ? (
+                    <Repeat1 className="h-3.5 w-3.5" />
+                  ) : (
+                    <Repeat className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
+
+              {/* Volume Control */}
+              <div className="flex items-center gap-1.5 w-24">
+                <Button variant="ghost" size="icon" onClick={toggleMute} className="h-7 w-7">
+                  {isMuted || volume === 0 ? (
+                    <VolumeX className="h-3.5 w-3.5" />
+                  ) : (
+                    <Volume2 className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+                <Slider
+                  value={[isMuted ? 0 : volume]}
+                  max={1}
+                  step={0.01}
+                  onValueChange={handleVolumeChange}
+                  className="flex-1 cursor-pointer"
+                />
+              </div>
+            </div>
           </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="space-y-1">
-          <Slider
-            value={[currentTime]}
-            max={duration || 100}
-            step={1}
-            onValueChange={handleSeek}
-            className="cursor-pointer"
-          />
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
-          </div>
-        </div>
-
-        {/* Playback Controls */}
-        <div className="flex items-center justify-center gap-1">
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={toggleShuffle}
-            className={cn("h-9 w-9", isShuffleOn && "text-primary")}
-            title={isShuffleOn ? "Karıştır: Açık" : "Karıştır: Kapalı"}
-          >
-            <Shuffle className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handlePrevious}>
-            <SkipBack className="h-5 w-5" />
-          </Button>
-          <Button 
-            size="icon" 
-            onClick={togglePlay}
-            className="h-12 w-12 rounded-full"
-          >
-            {isPlaying ? (
-              <Pause className="h-6 w-6" />
-            ) : (
-              <Play className="h-6 w-6 ml-0.5" />
-            )}
-          </Button>
-          <Button variant="ghost" size="icon" onClick={handleNext}>
-            <SkipForward className="h-5 w-5" />
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={toggleRepeat}
-            className={cn("h-9 w-9", repeatMode !== "off" && "text-primary")}
-            title={
-              repeatMode === "off" ? "Tekrar: Kapalı" : 
-              repeatMode === "all" ? "Tekrar: Tümü" : "Tekrar: Bir"
-            }
-          >
-            {repeatMode === "one" ? (
-              <Repeat1 className="h-4 w-4" />
-            ) : (
-              <Repeat className="h-4 w-4" />
-            )}
-          </Button>
-        </div>
-
-        {/* Volume Control */}
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={toggleMute} className="h-8 w-8">
-            {isMuted || volume === 0 ? (
-              <VolumeX className="h-4 w-4" />
-            ) : (
-              <Volume2 className="h-4 w-4" />
-            )}
-          </Button>
-          <Slider
-            value={[isMuted ? 0 : volume]}
-            max={1}
-            step={0.01}
-            onValueChange={handleVolumeChange}
-            className="flex-1 cursor-pointer"
-          />
         </div>
       </div>
+
 
       <audio ref={audioRef} src={currentTrack.url} preload="metadata" />
     </div>
