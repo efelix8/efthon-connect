@@ -10,6 +10,7 @@ export interface Room {
   created_at?: string;
   created_by?: string;
   has_password?: boolean;
+  background_url?: string | null;
 }
 
 export interface ChatUser {

@@ -543,6 +543,7 @@ const Index = () => {
                       roomId={room.id}
                       roomSlug={room.slug}
                       currentName={room.name}
+                      currentBackgroundUrl={room.background_url}
                       isCreator={room.created_by === chatUserId}
                     />
                     {room.created_by === chatUserId && !room.is_default && (
@@ -610,12 +611,24 @@ const Index = () => {
             </div>
           </header>
 
-          <section className="flex flex-1 flex-col">
+          <section className="flex flex-1 flex-col relative">
+            {/* Room Background Image with 90% opacity overlay */}
+            {activeRoomSlug !== "muzik" && rooms?.find(r => r.slug === activeRoomSlug)?.background_url && (
+              <div className="absolute inset-0 z-0">
+                <img 
+                  src={rooms.find(r => r.slug === activeRoomSlug)?.background_url!} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-background/90" />
+              </div>
+            )}
+            
             {activeRoomSlug === "muzik" ? (
               <MusicPlayer />
             ) : (
               <>
-                <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+                <div className="relative z-10 flex-1 space-y-3 overflow-y-auto px-4 py-4">
                   {messagesLoading && (
                     <p className="text-xs text-muted-foreground">Mesajlar yükleniyor...</p>
                   )}
@@ -643,7 +656,7 @@ const Index = () => {
                   <div ref={messagesEndRef} />
                 </div>
 
-                <form onSubmit={handleSend} className="border-t border-border bg-card/60 px-4 py-3">
+                <form onSubmit={handleSend} className="relative z-10 border-t border-border bg-card/60 backdrop-blur-sm px-4 py-3">
                   <div className="flex gap-2 items-center">
                     {user?.id && (
                       <FileUpload
