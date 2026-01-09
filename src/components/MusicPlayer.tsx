@@ -578,24 +578,25 @@ const MusicPlayer = () => {
           </div>
 
           {/* Speed Control */}
-          <div className="flex items-center gap-2">
-            <Gauge className="h-5 w-5 text-muted-foreground" />
+          <div className="flex items-center gap-2 flex-1 max-w-xs">
+            <Gauge className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+            <span className="text-xs text-muted-foreground w-8 text-right">0.4x</span>
             <Slider
               value={[playbackRate]}
-              min={0.5}
-              max={2}
-              step={0.1}
+              min={0.4}
+              max={1.5}
+              step={0.01}
               onValueChange={(value) => {
                 setPlaybackRate(value[0]);
                 if (audioRef.current) {
                   audioRef.current.playbackRate = value[0];
-                  // Disable preservesPitch to allow pitch to change with speed
                   audioRef.current.preservesPitch = false;
                 }
               }}
-              className="w-24 cursor-pointer"
+              className="flex-1 cursor-pointer"
             />
-            <span className="text-xs text-muted-foreground w-10 font-mono">{playbackRate.toFixed(1)}x</span>
+            <span className="text-xs text-muted-foreground w-8">1.5x</span>
+            <span className="text-sm font-mono font-bold text-primary w-12 text-center">{playbackRate.toFixed(2)}x</span>
           </div>
         </div>
       </div>
