@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2, Shuffle, Repeat, Repeat1, Upload, Loader2, ImagePlus, X } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music2, Shuffle, Repeat, Repeat1, Upload, Loader2, ImagePlus, X, RotateCcw, RotateCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { cn } from "@/lib/utils";
@@ -497,8 +497,21 @@ const MusicPlayer = () => {
                 >
                   <Shuffle className="h-3.5 w-3.5" />
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handlePrevious} className="h-7 w-7">
+                <Button variant="ghost" size="icon" onClick={handlePrevious} className="h-7 w-7" title="Önceki şarkı">
                   <SkipBack className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => {
+                    if (audioRef.current) {
+                      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+                    }
+                  }}
+                  className="h-7 w-7"
+                  title="10 saniye geri"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" />
                 </Button>
                 <Button 
                   size="icon" 
@@ -511,7 +524,20 @@ const MusicPlayer = () => {
                     <Play className="h-4 w-4 ml-0.5" />
                   )}
                 </Button>
-                <Button variant="ghost" size="icon" onClick={handleNext} className="h-7 w-7">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={() => {
+                    if (audioRef.current) {
+                      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+                    }
+                  }}
+                  className="h-7 w-7"
+                  title="10 saniye ileri"
+                >
+                  <RotateCw className="h-3.5 w-3.5" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={handleNext} className="h-7 w-7" title="Sonraki şarkı">
                   <SkipForward className="h-4 w-4" />
                 </Button>
                 <Button 
