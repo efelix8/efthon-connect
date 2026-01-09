@@ -6,35 +6,35 @@ import { Button } from "@/components/ui/button";
 import { Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import siteGateBg from "@/assets/site-gate-bg.png";
-
 const STORAGE_KEY = "site_access_verified";
-
 interface SiteGateProps {
   children: ReactNode;
 }
-
-export const SiteGate = ({ children }: SiteGateProps) => {
+export const SiteGate = ({
+  children
+}: SiteGateProps) => {
   const [isVerified, setIsVerified] = useState(() => {
     return sessionStorage.getItem(STORAGE_KEY) === "true";
   });
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
-
     try {
-      const { data, error: fnError } = await supabase.functions.invoke("verify-site-password", {
-        body: { password },
+      const {
+        data,
+        error: fnError
+      } = await supabase.functions.invoke("verify-site-password", {
+        body: {
+          password
+        }
       });
-
       if (fnError) {
         throw new Error(fnError.message);
       }
-
       if (data?.valid) {
         sessionStorage.setItem(STORAGE_KEY, "true");
         setIsVerified(true);
@@ -48,18 +48,11 @@ export const SiteGate = ({ children }: SiteGateProps) => {
       setIsLoading(false);
     }
   };
-
   if (isVerified) {
     return <>{children}</>;
   }
-
-  return (
-    <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
-      <img
-        src={siteGateBg}
-        alt=""
-        className="absolute inset-0 m-auto h-[70%] w-[70%] object-contain opacity-10 pointer-events-none"
-      />
+  return <div className="relative flex min-h-screen items-center justify-center bg-background px-4">
+      <img src={siteGateBg} alt="" className="absolute inset-0 m-auto h-[70%] w-[70%] object-contain opacity-10 pointer-events-none" />
       <Card className="relative z-10 w-full max-w-sm border-border bg-card shadow-lg shadow-black/5">
         <CardHeader className="space-y-2 text-center">
           <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -76,17 +69,8 @@ export const SiteGate = ({ children }: SiteGateProps) => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
               <Label htmlFor="site-password">Şifre</Label>
-              <Input
-                id="site-password"
-                type="password"
-                autoComplete="off"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="enesabipardon"
-              />
-              {error && (
-                <p className="text-xs text-destructive">{error}</p>
-              )}
+              <Input id="site-password" type="password" autoComplete="off" value={password} onChange={e => setPassword(e.target.value)} placeholder=" nalbonunkarde\u015Fininismi" />
+              {error && <p className="text-xs text-destructive">{error}</p>}
             </div>
             <Button className="w-full" type="submit" disabled={isLoading || !password.trim()}>
               {isLoading ? "Doğrulanıyor..." : "Giriş Yap"}
@@ -94,6 +78,5 @@ export const SiteGate = ({ children }: SiteGateProps) => {
           </form>
         </CardContent>
       </Card>
-    </div>
-  );
+    </div>;
 };
