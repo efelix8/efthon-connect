@@ -432,7 +432,7 @@ const MusicPlayer = () => {
       <div className="border-t border-border bg-card/95 backdrop-blur-md p-4">
         <div className="flex items-center gap-4">
           {/* Large Cover Image */}
-          <div className="relative w-20 h-20 rounded-lg overflow-hidden bg-primary/10 flex-shrink-0 shadow-xl ring-1 ring-white/10">
+          <div className="relative w-28 h-28 rounded-xl overflow-hidden bg-primary/10 flex-shrink-0 shadow-2xl ring-1 ring-white/10">
             {currentTrack.coverUrl ? (
               <img 
                 src={currentTrack.coverUrl} 
@@ -444,7 +444,7 @@ const MusicPlayer = () => {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/5">
-                <Music2 className="w-8 h-8 text-primary/60" />
+                <Music2 className="w-12 h-12 text-primary/60" />
               </div>
             )}
             {isPlaying && (
