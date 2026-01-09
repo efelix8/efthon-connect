@@ -430,11 +430,11 @@ const MusicPlayer = () => {
         </div>
       </div>
 
-      {/* Player Controls - Spotify Style */}
-      <div className="border-t border-border bg-card/95 backdrop-blur-md p-4">
-        <div className="flex items-center gap-4">
-          {/* Large Cover Image */}
-          <div className="relative w-36 h-36 rounded-xl overflow-hidden bg-primary/10 flex-shrink-0 shadow-2xl ring-1 ring-white/10">
+      {/* Player Controls - Large Style */}
+      <div className="border-t border-border bg-card/95 backdrop-blur-md p-6">
+        {/* Giant Cover Image */}
+        <div className="flex justify-center mb-6">
+          <div className="relative w-64 h-64 rounded-2xl overflow-hidden bg-primary/10 flex-shrink-0 shadow-2xl ring-1 ring-white/10">
             {currentTrack.coverUrl ? (
               <img 
                 src={currentTrack.coverUrl} 
@@ -446,137 +446,132 @@ const MusicPlayer = () => {
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/30 to-primary/5">
-                <Music2 className="w-14 h-14 text-primary/60" />
+                <Music2 className="w-24 h-24 text-primary/60" />
               </div>
             )}
             {isPlaying && (
-              <div className="absolute bottom-1 right-1 w-2.5 h-2.5 bg-primary rounded-full animate-pulse" />
+              <div className="absolute bottom-2 right-2 w-4 h-4 bg-primary rounded-full animate-pulse" />
             )}
           </div>
+        </div>
 
-          {/* Track Info + Progress + Controls */}
-          <div className="flex-1 min-w-0 space-y-2">
-            {/* Track Title & Artist */}
-            <div>
-              <p className="font-semibold text-sm truncate">{currentTrack.title}</p>
-              <p className="text-xs text-muted-foreground truncate">{currentTrack.artist}</p>
-            </div>
+        {/* Track Info */}
+        <div className="text-center mb-4">
+          <p className="font-bold text-lg truncate">{currentTrack.title}</p>
+          <p className="text-sm text-muted-foreground truncate">{currentTrack.artist}</p>
+        </div>
 
-            {/* Spotify-style Progress Bar */}
-            <div className="group relative">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-muted-foreground w-8 text-right font-mono">{formatTime(currentTime)}</span>
-                <div className="flex-1 relative h-5 flex items-center">
-                  <div className="absolute inset-x-0 h-1 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="absolute inset-y-0 left-0 bg-primary/60 group-hover:bg-primary transition-colors rounded-full"
-                      style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
-                    />
-                  </div>
-                  <Slider
-                    value={[currentTime]}
-                    max={duration || 100}
-                    step={0.1}
-                    onValueChange={handleSeek}
-                    className="absolute inset-0 cursor-pointer [&_[data-slot=track]]:bg-transparent [&_[data-slot=range]]:bg-transparent [&_[data-slot=thumb]]:w-3 [&_[data-slot=thumb]]:h-3 [&_[data-slot=thumb]]:opacity-0 group-hover:[&_[data-slot=thumb]]:opacity-100 [&_[data-slot=thumb]]:transition-opacity [&_[data-slot=thumb]]:bg-foreground [&_[data-slot=thumb]]:border-0 [&_[data-slot=thumb]]:shadow-lg"
-                  />
-                </div>
-                <span className="text-[10px] text-muted-foreground w-8 font-mono">{formatTime(duration)}</span>
-              </div>
-            </div>
-
-            {/* Compact Playback Controls */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-0.5">
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={toggleShuffle}
-                  className={cn("h-7 w-7", isShuffleOn && "text-primary")}
-                  title={isShuffleOn ? "Karıştır: Açık" : "Karıştır: Kapalı"}
-                >
-                  <Shuffle className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handlePrevious} className="h-7 w-7" title="Önceki şarkı">
-                  <SkipBack className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => {
-                    if (audioRef.current) {
-                      audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
-                    }
-                  }}
-                  className="h-7 w-7"
-                  title="10 saniye geri"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                </Button>
-                <Button 
-                  size="icon" 
-                  onClick={togglePlay}
-                  className="h-9 w-9 rounded-full mx-1"
-                >
-                  {isPlaying ? (
-                    <Pause className="h-4 w-4" />
-                  ) : (
-                    <Play className="h-4 w-4 ml-0.5" />
-                  )}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={() => {
-                    if (audioRef.current) {
-                      audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
-                    }
-                  }}
-                  className="h-7 w-7"
-                  title="10 saniye ileri"
-                >
-                  <RotateCw className="h-3.5 w-3.5" />
-                </Button>
-                <Button variant="ghost" size="icon" onClick={handleNext} className="h-7 w-7" title="Sonraki şarkı">
-                  <SkipForward className="h-4 w-4" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  onClick={toggleRepeat}
-                  className={cn("h-7 w-7", repeatMode !== "off" && "text-primary")}
-                  title={
-                    repeatMode === "off" ? "Tekrar: Kapalı" : 
-                    repeatMode === "all" ? "Tekrar: Tümü" : "Tekrar: Bir"
-                  }
-                >
-                  {repeatMode === "one" ? (
-                    <Repeat1 className="h-3.5 w-3.5" />
-                  ) : (
-                    <Repeat className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-              </div>
-
-              {/* Volume Control */}
-              <div className="flex items-center gap-1.5 w-24">
-                <Button variant="ghost" size="icon" onClick={toggleMute} className="h-7 w-7">
-                  {isMuted || volume === 0 ? (
-                    <VolumeX className="h-3.5 w-3.5" />
-                  ) : (
-                    <Volume2 className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-                <Slider
-                  value={[isMuted ? 0 : volume]}
-                  max={1}
-                  step={0.01}
-                  onValueChange={handleVolumeChange}
-                  className="flex-1 cursor-pointer"
+        {/* Progress Bar */}
+        <div className="group relative mb-4">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-muted-foreground w-10 text-right font-mono">{formatTime(currentTime)}</span>
+            <div className="flex-1 relative h-6 flex items-center">
+              <div className="absolute inset-x-0 h-1.5 bg-muted rounded-full overflow-hidden">
+                <div 
+                  className="absolute inset-y-0 left-0 bg-primary/60 group-hover:bg-primary transition-colors rounded-full"
+                  style={{ width: `${duration ? (currentTime / duration) * 100 : 0}%` }}
                 />
               </div>
+              <Slider
+                value={[currentTime]}
+                max={duration || 100}
+                step={0.1}
+                onValueChange={handleSeek}
+                className="absolute inset-0 cursor-pointer [&_[data-slot=track]]:bg-transparent [&_[data-slot=range]]:bg-transparent [&_[data-slot=thumb]]:w-4 [&_[data-slot=thumb]]:h-4 [&_[data-slot=thumb]]:opacity-0 group-hover:[&_[data-slot=thumb]]:opacity-100 [&_[data-slot=thumb]]:transition-opacity [&_[data-slot=thumb]]:bg-foreground [&_[data-slot=thumb]]:border-0 [&_[data-slot=thumb]]:shadow-lg"
+              />
             </div>
+            <span className="text-xs text-muted-foreground w-10 font-mono">{formatTime(duration)}</span>
           </div>
+        </div>
+
+        {/* Playback Controls */}
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleShuffle}
+            className={cn("h-10 w-10", isShuffleOn && "text-primary")}
+            title={isShuffleOn ? "Karıştır: Açık" : "Karıştır: Kapalı"}
+          >
+            <Shuffle className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={handlePrevious} className="h-10 w-10" title="Önceki şarkı">
+            <SkipBack className="h-6 w-6" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => {
+              if (audioRef.current) {
+                audioRef.current.currentTime = Math.max(0, audioRef.current.currentTime - 10);
+              }
+            }}
+            className="h-10 w-10"
+            title="10 saniye geri"
+          >
+            <RotateCcw className="h-5 w-5" />
+          </Button>
+          <Button 
+            size="icon" 
+            onClick={togglePlay}
+            className="h-14 w-14 rounded-full"
+          >
+            {isPlaying ? (
+              <Pause className="h-7 w-7" />
+            ) : (
+              <Play className="h-7 w-7 ml-1" />
+            )}
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => {
+              if (audioRef.current) {
+                audioRef.current.currentTime = Math.min(duration, audioRef.current.currentTime + 10);
+              }
+            }}
+            className="h-10 w-10"
+            title="10 saniye ileri"
+          >
+            <RotateCw className="h-5 w-5" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={handleNext} className="h-10 w-10" title="Sonraki şarkı">
+            <SkipForward className="h-6 w-6" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={toggleRepeat}
+            className={cn("h-10 w-10", repeatMode !== "off" && "text-primary")}
+            title={
+              repeatMode === "off" ? "Tekrar: Kapalı" : 
+              repeatMode === "all" ? "Tekrar: Tümü" : "Tekrar: Bir"
+            }
+          >
+            {repeatMode === "one" ? (
+              <Repeat1 className="h-5 w-5" />
+            ) : (
+              <Repeat className="h-5 w-5" />
+            )}
+          </Button>
+        </div>
+
+        {/* Volume Control */}
+        <div className="flex items-center justify-center gap-2">
+          <Button variant="ghost" size="icon" onClick={toggleMute} className="h-9 w-9">
+            {isMuted || volume === 0 ? (
+              <VolumeX className="h-5 w-5" />
+            ) : (
+              <Volume2 className="h-5 w-5" />
+            )}
+          </Button>
+          <Slider
+            value={[isMuted ? 0 : volume]}
+            max={1}
+            step={0.01}
+            onValueChange={handleVolumeChange}
+            className="w-32 cursor-pointer"
+          />
         </div>
       </div>
 
