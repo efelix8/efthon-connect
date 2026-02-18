@@ -26,22 +26,28 @@ const ICE_SERVERS: RTCConfiguration = {
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
     { urls: "stun:stun2.l.google.com:19302" },
-    { urls: "stun:stun.relay.metered.ca:80" },
-    // Free TURN servers from Open Relay Project
+    { urls: "stun:stun3.l.google.com:19302" },
+    { urls: "stun:stun4.l.google.com:19302" },
+    // Free TURN servers from Metered
     {
-      urls: "turn:openrelay.metered.ca:80",
-      username: "openrelayproject",
-      credential: "openrelayproject",
+      urls: "turn:a.relay.metered.ca:80",
+      username: "e8dd65b92f6dce4364f6a2e6",
+      credential: "m+FbI2hPNnRoYRMp",
     },
     {
-      urls: "turn:openrelay.metered.ca:443",
-      username: "openrelayproject",
-      credential: "openrelayproject",
+      urls: "turn:a.relay.metered.ca:80?transport=tcp",
+      username: "e8dd65b92f6dce4364f6a2e6",
+      credential: "m+FbI2hPNnRoYRMp",
     },
     {
-      urls: "turn:openrelay.metered.ca:443?transport=tcp",
-      username: "openrelayproject",
-      credential: "openrelayproject",
+      urls: "turn:a.relay.metered.ca:443",
+      username: "e8dd65b92f6dce4364f6a2e6",
+      credential: "m+FbI2hPNnRoYRMp",
+    },
+    {
+      urls: "turns:a.relay.metered.ca:443?transport=tcp",
+      username: "e8dd65b92f6dce4364f6a2e6",
+      credential: "m+FbI2hPNnRoYRMp",
     },
   ],
   iceCandidatePoolSize: 10,
@@ -376,18 +382,43 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined, userN
       console.log("Joining call...");
       toast.loading("Kamera ve mikrofon açılıyor...", { id: "join-call" });
       
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-          frameRate: { ideal: 30 },
-        },
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
-        },
-      });
+      let stream: MediaStream;
+      
+      try {
+        // Try video + audio first
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+            frameRate: { ideal: 30 },
+          },
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+      } catch (videoError) {
+        console.warn("Video access failed, trying audio-only:", videoError);
+        toast.loading("Kamera erişilemedi, sadece ses ile katılınıyor...", { id: "join-call" });
+        
+        try {
+          // Fallback to audio-only
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: false,
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
+          setIsVideoOff(true);
+        } catch (audioError) {
+          console.error("Audio access also failed:", audioError);
+          toast.error("Mikrofon erişimi başarısız. Tarayıcı izinlerini kontrol edin.", { id: "join-call" });
+          return;
+        }
+      }
       
       // Set both state and ref immediately
       localStreamRef.current = stream;
@@ -427,7 +458,11 @@ export const useVideoCall = (roomSlug: string, userId: string | undefined, userN
       setIsInCall(true);
     } catch (error) {
       console.error("Error joining call:", error);
-      toast.error("Kamera veya mikrofon erişimi başarısız. Lütfen izinleri kontrol edin.", { id: "join-call" });
+      if (error instanceof Error && error.name === "NotAllowedError") {
+        toast.error("Kamera/mikrofon izni reddedildi. Tarayıcı ayarlarından izin verin.", { id: "join-call" });
+      } else {
+        toast.error("Aramaya katılırken bir hata oluştu. Lütfen tekrar deneyin.", { id: "join-call" });
+      }
     }
   }, [userId, roomSlug, handleSignal, userNickname, updateConnectionQuality]);
 
