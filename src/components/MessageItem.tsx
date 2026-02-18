@@ -16,6 +16,21 @@ interface MessageItemProps {
   isLastInGroup?: boolean;
 }
 
+const URL_REGEX = /(https?:\/\/[^\s<]+)/g;
+
+const renderContentWithLinks = (text: string) => {
+  const parts = text.split(URL_REGEX);
+  return parts.map((part, i) =>
+    URL_REGEX.test(part) ? (
+      <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 break-all">
+        {part}
+      </a>
+    ) : (
+      <span key={i}>{part}</span>
+    )
+  );
+};
+
 const isPdfUrl = (url: string | null | undefined): boolean => {
   if (!url) return false;
   return url.toLowerCase().endsWith(".pdf");
@@ -143,7 +158,9 @@ const MessageItem = ({ message, isOwn, activeRoomSlug, isFirstInGroup = true, is
           <div className="flex items-end gap-2">
             <div className="flex-1">
               {message.content && (
-                <p className="text-sm leading-snug text-foreground">{message.content}</p>
+                <p className="text-sm leading-snug text-foreground">
+                  {renderContentWithLinks(message.content)}
+                </p>
               )}
               {message.editedAt && (
                 <span className="text-[10px] text-muted-foreground">(düzenlendi)</span>
